@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Разместить вакансию</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root {
+      --bg: var(--tg-theme-bg-color, #ffffff);
+      --text: var(--tg-theme-text-color, #222222);
+      --hint: var(--tg-theme-hint-color, #777777);
+      --button: var(--tg-theme-button-color, #2481cc);
+      --button-text: var(--tg-theme-button-text-color, #ffffff);
+      --secondary: var(--tg-theme-secondary-bg-color, #f2f2f2);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin: 4px 0 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+      margin: 16px 0 7px;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid rgba(128,128,128,.35);
+      border-radius: 12px;
+      padding: 13px;
+      font-size: 16px;
+      background: var(--secondary);
+      color: var(--text);
+      outline: none;
+    }
+
+    textarea {
+      min-height: 130px;
+      resize: vertical;
+    }
+
+    .hint {
+      color: var(--hint);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .preview {
+      margin-top: 22px;
+      padding: 16px;
+      border-radius: 14px;
+      background: var(--secondary);
+    }
+
+    .preview-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .preview-line {
+      margin: 5px 0;
+    }
+
+    .error {
+      color: #d93025;
+      font-size: 14px;
+      margin-top: 12px;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🇨🇿 Разместить вакансию</h1>
+
+  <label for="title">Название вакансии *</label>
+  <input
+    id="title"
+    type="text"
+    maxlength="70"
+    placeholder="Например: Водитель категории C"
+  >
+
+  <label for="city">Город *</label>
+  <input
+    id="city"
+    type="text"
+    maxlength="50"
+    placeholder="Прага"
+  >
+
+  <label for="salary">Зарплата *</label>
+  <input
+    id="salary"
+    type="text"
+    maxlength="50"
+    placeholder="40 000–50 000 Kč"
+  >
+
+  <label for="description">Описание вакансии *</label>
+  <textarea
+    id="description"
+    maxlength="1500"
+    placeholder="Расскажите об условиях работы, графике, требованиях и т.д."
+  ></textarea>
+
+  <div class="hint">
+    Максимум 1500 символов
+  </div>
+
+  <label for="contact">Контакт *</label>
+  <input
+    id="contact"
+    type="text"
+    maxlength="80"
+    placeholder="Телефон, Telegram или WhatsApp"
+  >
+
+  <div id="error" class="error"></div>
+
+  <div class="preview">
+    <div class="preview-title">Предпросмотр</div>
+
+    <div class="preview-line">
+      📌 <span id="pTitle">Название вакансии</span>
+    </div>
+
+    <div class="preview-line">
+      📍 <span id="pCity">Город</span>
+    </div>
+
+    <div class="preview-line">
+      💰 <span id="pSalary">Зарплата</span>
+    </div>
+
+    <div class="preview-line">
+      📞 <span id="pContact">Контакт</span>
+    </div>
+
+    <br>
+
+    <div id="pDescription">
+      Здесь появится описание вакансии
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+
+    tg.ready();
+    tg.expand();
+
+    const title = document.getElementById("title");
+    const city = document.getElementById("city");
+    const salary = document.getElementById("salary");
+    const description = document.getElementById("description");
+    const contact = document.getElementById("contact");
+
+    const pTitle = document.getElementById("pTitle");
+    const pCity = document.getElementById("pCity");
+    const pSalary = document.getElementById("pSalary");
+    const pDescription = document.getElementById("pDescription");
+    const pContact = document.getElementById("pContact");
+    const error = document.getElementById("error");
+
+    function updatePreview() {
+      pTitle.textContent = title.value || "Название вакансии";
+      pCity.textContent = city.value || "Город";
+      pSalary.textContent = salary.value || "Зарплата";
+      pContact.textContent = contact.value || "Контакт";
+      pDescription.textContent =
+        description.value || "Здесь появится описание вакансии";
+    }
+
+    [title, city, salary, description, contact].forEach(input => {
+      input.addEventListener("input", updatePreview);
+    });
+
+    tg.MainButton.setText("Отправить на модерацию");
+    tg.MainButton.show();
+
+    tg.MainButton.onClick(function () {
+
+      error.style.display = "none";
+
+      if (!title.value.trim()) {
+        error.textContent = "Укажи название вакансии.";
+        error.style.display = "block";
+        return;
+      }
+
+      if (!city.value.trim()) {
+        error.textContent = "Укажи город.";
+        error.style.display = "block";
+        return;
+      }
+
+      if (!salary.value.trim()) {
+        error.textContent = "Укажи зарплату.";
+        error.style.display = "block";
+        return;
+      }
+
+      if (!description.value.trim()) {
+        error.textContent = "Добавь описание вакансии.";
+        error.style.display = "block";
+        return;
+      }
+
+      if (!contact.value.trim()) {
+        error.textContent = "Укажи контакт.";
+        error.style.display = "block";
+        return;
+      }
+
+      const data = {
+        title: title.value.trim(),
+        city: city.value.trim(),
+        salary: salary.value.trim(),
+        description: description.value.trim(),
+        contact: contact.value.trim()
+      };
+
+      tg.sendData(JSON.stringify(data));
+    });
+
+    updatePreview();
+  </script>
+
+</body>
+</html>

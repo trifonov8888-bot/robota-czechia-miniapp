@@ -243,7 +243,20 @@
         contact: contact.value.trim()
       };
 
-      tg.sendData(JSON.stringify(data));
+      fetch("https://script.google.com/macros/s/AKfycbwGiif2P_hjtiv5jY-CrBn__6LcFw7544x6p4-ioP0LCXlPsE0KBY5cvMICmSGA9nzl/exec", {
+  method: "POST",
+  headers: {
+    "Content-Type": "text/plain;charset=utf-8"
+  },
+  body: JSON.stringify(data)
+})
+.then(() => {
+  tg.MainButton.setText("Отправлено!");
+  tg.MainButton.disable();
+})
+.catch(() => {
+  alert("Ошибка отправки. Попробуйте ещё раз.");
+});
     });
 
     updatePreview();

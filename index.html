@@ -129,7 +129,15 @@
     maxlength="50"
     placeholder="40 000–50 000 Kč"
   >
-
+<label for="schedule">График работы *</label>
+<select id="schedule">
+    <option value="">Выберите график</option>
+    <option>Полный день</option>
+    <option>Неполный день</option>
+    <option>Посменно</option>
+    <option>Вахта</option>
+    <option>По договорённости</option>
+</select>
   <label for="description">Описание вакансии *</label>
   <textarea
     id="description"
@@ -165,7 +173,9 @@
     <div class="preview-line">
       💰 <span id="pSalary">Зарплата</span>
     </div>
-
+<div class="preview-line">
+    🕐 <span id="pSchedule">График работы</span>
+</div>
     <div class="preview-line">
       📞 <span id="pContact">Контакт</span>
     </div>
@@ -187,6 +197,7 @@
     const category = document.getElementById("category");
     const city = document.getElementById("city");
     const salary = document.getElementById("salary");
+    const schedule = document.getElementById("schedule");
     const description = document.getElementById("description");
     const contact = document.getElementById("contact");
 
@@ -194,6 +205,7 @@
     const pCategory = document.getElementById("pCategory");
     const pCity = document.getElementById("pCity");
     const pSalary = document.getElementById("pSalary");
+    const pSchedule = document.getElementById("pSchedule");
     const pDescription = document.getElementById("pDescription");
     const pContact = document.getElementById("pContact");
     const error = document.getElementById("error");
@@ -203,12 +215,13 @@
       pCategory.textContent = category.value || "Категория";
       pCity.textContent = city.value || "Город";
       pSalary.textContent = salary.value || "Зарплата";
+      pSchedule.textContent = schedule.value || "График работы";
       pContact.textContent = contact.value || "Контакт";
       pDescription.textContent =
         description.value || "Здесь появится описание вакансии";
     }
 
-    [title, category, city, salary, description, contact].forEach(input => {
+    [title, category, city, salary,schedule , description, contact].forEach(input => {
       input.addEventListener("input", updatePreview);
     });
 
@@ -253,6 +266,7 @@
         title: title.value.trim(),
         city: city.value.trim(),
         salary: salary.value.trim(),
+        schedule: schedule.value.trim(),
         description: description.value.trim(),
         contact: contact.value.trim()
       };

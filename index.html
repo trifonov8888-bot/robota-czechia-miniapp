@@ -1,294 +1,1078 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Разместить вакансию</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Разместить вакансию</title>
 
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <style>
-    :root {
-      --bg: var(--tg-theme-bg-color, #ffffff);
-      --text: var(--tg-theme-text-color, #222222);
-      --hint: var(--tg-theme-hint-color, #777777);
-      --button: var(--tg-theme-button-color, #2481cc);
-      --button-text: var(--tg-theme-button-text-color, #ffffff);
-      --secondary: var(--tg-theme-secondary-bg-color, #f2f2f2);
-    }
+<style>
+:root {
+  --bg: var(--tg-theme-bg-color, #f4f6f8);
+  --text: var(--tg-theme-text-color, #222);
+  --hint: var(--tg-theme-hint-color, #777);
+  --button: var(--tg-theme-button-color, #2481cc);
+  --button-text: var(--tg-theme-button-text-color, #fff);
+  --secondary: var(--tg-theme-secondary-bg-color, #fff);
+  --border: rgba(0,0,0,.08);
+}
 
-    * {
-      box-sizing: border-box;
-    }
+* {
+  box-sizing: border-box;
+}
 
-    body {
-      margin: 0;
-      padding: 16px;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    }
+body {
+  margin: 0;
+  padding: 0 14px 30px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
 
-    h1 {
-      font-size: 24px;
-      margin: 4px 0 20px;
-    }
+.container {
+  max-width: 620px;
+  margin: 0 auto;
+}
 
-    label {
-      display: block;
-      font-size: 15px;
-      font-weight: 600;
-      margin: 16px 0 7px;
-    }
+h1 {
+  font-size: 24px;
+  margin: 18px 0 6px;
+}
 
-    input,
-    textarea,
-    select {
-      width: 100%;
-      border: 1px solid rgba(128,128,128,.35);
-      border-radius: 12px;
-      padding: 13px;
-      font-size: 16px;
-      background: var(--secondary);
-      color: var(--text);
-      outline: none;
-    }
+.subtitle {
+  color: var(--hint);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
 
-    textarea {
-      min-height: 130px;
-      resize: vertical;
-    }
+.card {
+  background: var(--secondary);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
 
-    .hint {
-      color: var(--hint);
-      font-size: 13px;
-      margin-top: 5px;
-    }
+label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
 
-    .preview {
-      margin-top: 22px;
-      padding: 16px;
-      border-radius: 14px;
-      background: var(--secondary);
-    }
+.required {
+  color: #e55353;
+}
 
-    .preview-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 12px;
+  font-size: 16px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+}
 
-    .preview-line {
-      margin: 5px 0;
-    }
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--button);
+}
 
-    .error {
-      color: #d93025;
-      font-size: 14px;
-      margin-top: 12px;
-      display: none;
-    }
-  </style>
+textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.row > * {
+  flex: 1;
+}
+
+.section-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 4px 0 14px;
+}
+
+.check-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.preview {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 15px;
+  background: var(--secondary);
+}
+
+.preview-title {
+  font-size: 19px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.preview-line {
+  color: var(--hint);
+  font-size: 14px;
+  margin: 7px 0;
+}
+
+.preview-description {
+  white-space: pre-wrap;
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+button {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--button);
+  color: var(--button-text);
+  font-size: 17px;
+  font-weight: 700;
+  margin-top: 5px;
+}
+
+button:disabled {
+  opacity: .55;
+}
+
+.note {
+  color: var(--hint);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
+.hidden {
+  display: none;
+}
+
+.success {
+  text-align: center;
+  padding: 25px 10px;
+}
+
+.success-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 430px) {
+  .check-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .row {
+    gap: 8px;
+  }
+}
+</style>
 </head>
 
 <body>
 
-  <h1>🇨🇿 Разместить вакансию</h1>
+<div class="container">
 
-  <label for="title">Название вакансии *</label>
-  <input
-    id="title"
-    type="text"
-    maxlength="70"
-    placeholder="Например: Водитель категории C"
-  >
-<label for="category">📂 Категория *</label>
-<select id="category">
-  <option value="">Выберите категорию</option>
-  <option>Водители</option>
-  <option>Строительство</option>
-  <option>Производство</option>
-  <option>Склад</option>
-  <option>Уборка</option>
-  <option>Рестораны и гостиницы</option>
-  <option>Разнорабочие</option>
-  <option>Другое</option>
-</select>
-  <label for="city">Город *</label>
-  <input
-    id="city"
-    type="text"
-    maxlength="50"
-    placeholder="Прага"
-  >
-
-  <label for="salary">Зарплата *</label>
-  <input
-    id="salary"
-    type="text"
-    maxlength="50"
-    placeholder="40 000–50 000 Kč"
-  >
-<label for="schedule">График работы *</label>
-<select id="schedule">
-    <option value="">Выберите график</option>
-    <option>Полный день</option>
-    <option>Неполный день</option>
-    <option>Посменно</option>
-    <option>Вахта</option>
-    <option>По договорённости</option>
-</select>
-  <label for="description">Описание вакансии *</label>
-  <textarea
-    id="description"
-    maxlength="1500"
-    placeholder="Расскажите об условиях работы, графике, требованиях и т.д."
-  ></textarea>
-
-  <div class="hint">
-    Максимум 1500 символов
+  <h1>📢 Разместить вакансию</h1>
+  <div class="subtitle">
+    Заполните информацию о работе. После отправки вакансия поступит на модерацию.
   </div>
 
-  <label for="contact">Контакт *</label>
-  <input
-    id="contact"
-    type="text"
-    maxlength="80"
-    placeholder="Телефон, Telegram или WhatsApp"
-  >
+  <form id="vacancyForm">
 
-  <div id="error" class="error"></div>
+    <div class="card">
 
-  <div class="preview">
-    <div class="preview-title">Предпросмотр</div>
+      <div class="field">
+        <label>Название вакансии <span class="required">*</span></label>
+        <input id="title" type="text" placeholder="Например: Водитель C+E">
+      </div>
 
-    <div class="preview-line">
-      📌 <span id="pTitle">Название вакансии</span>
+      <div class="field">
+        <label>📂 Категория <span class="required">*</span></label>
+        <select id="category">
+          <option value="">Выберите категорию</option>
+          <option>Транспорт</option>
+          <option>Строительство</option>
+          <option>Производство</option>
+          <option>Склад и логистика</option>
+          <option>Уборка и клининг</option>
+          <option>Рестораны и гостиницы</option>
+          <option>Авто</option>
+          <option>Торговля и продажи</option>
+          <option>Офис и IT</option>
+          <option>Уход и помощь</option>
+          <option>Сельское хозяйство</option>
+          <option>Ремонт и обслуживание</option>
+          <option>Сфера услуг</option>
+          <option>Разнорабочие</option>
+          <option>Другое</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>👷 Профессия</label>
+        <select id="profession">
+          <option value="">Выберите профессию</option>
+
+          <optgroup label="Транспорт">
+            <option>Водитель B</option>
+            <option>Водитель C</option>
+            <option>Водитель C+E</option>
+            <option>Водитель D</option>
+            <option>Водитель автобуса</option>
+            <option>Курьер</option>
+          </optgroup>
+
+          <optgroup label="Строительство">
+            <option>Каменщик</option>
+            <option>Бетонщик</option>
+            <option>Арматурщик</option>
+            <option>Монтажник</option>
+            <option>Плиточник</option>
+            <option>Штукатур</option>
+            <option>Маляр</option>
+            <option>Кровельщик</option>
+            <option>Фасадчик</option>
+            <option>Сантехник</option>
+            <option>Электрик</option>
+            <option>Сварщик</option>
+            <option>Плотник</option>
+            <option>Прораб</option>
+          </optgroup>
+
+          <optgroup label="Производство">
+            <option>Оператор CNC</option>
+            <option>Сборщик</option>
+            <option>Упаковщик</option>
+            <option>Контролёр качества</option>
+            <option>Рабочий производства</option>
+          </optgroup>
+
+          <optgroup label="Склад и логистика">
+            <option>Комплектовщик</option>
+            <option>Водитель погрузчика</option>
+            <option>Работник склада</option>
+            <option>Логист</option>
+          </optgroup>
+
+          <optgroup label="Другое">
+            <option>Разнорабочий</option>
+            <option>Уборщик</option>
+            <option>Повар</option>
+            <option>Официант</option>
+            <option>Другое</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>📍 Город <span class="required">*</span></label>
+        <select id="city">
+          <option value="">Выберите город</option>
+          <option>Прага</option>
+          <option>Брно</option>
+          <option>Острава</option>
+          <option>Пльзень</option>
+          <option>Либерец</option>
+          <option>Оломоуц</option>
+          <option>Ческе-Будеёвице</option>
+          <option>Градец-Кралове</option>
+          <option>Пардубице</option>
+          <option>Усти-над-Лабем</option>
+          <option>Злин</option>
+          <option>Карловы Вары</option>
+          <option>Яблонец-над-Нисоу</option>
+          <option>Млада-Болеслав</option>
+          <option>Теплице</option>
+          <option>Дечин</option>
+          <option>Хомутов</option>
+          <option>Кладно</option>
+          <option>Пршеров</option>
+          <option>Опава</option>
+          <option>Фридек-Мистек</option>
+          <option>Другой город</option>
+          <option>Вся Чехия</option>
+        </select>
+      </div>
+
     </div>
 
-    <div class="preview-line">
-      📍 <span id="pCity">Город</span>
+
+    <div class="card">
+
+      <div class="section-title">💰 Зарплата</div>
+
+      <div class="row field">
+        <input id="salaryFrom" type="number" inputmode="numeric" placeholder="От">
+        <input id="salaryTo" type="number" inputmode="numeric" placeholder="До">
+      </div>
+
+      <div class="field">
+        <select id="salaryUnit">
+          <option value="">Единица оплаты</option>
+          <option>Kč/месяц</option>
+          <option>Kč/час</option>
+          <option>Kč/день</option>
+          <option>По договорённости</option>
+        </select>
+      </div>
+
     </div>
 
-    <div class="preview-line">
-      💰 <span id="pSalary">Зарплата</span>
+
+    <div class="card">
+
+      <div class="section-title">🏠 Жильё</div>
+
+      <select id="housing">
+        <option value="">Выберите вариант</option>
+        <option>Предоставляется</option>
+        <option>Не предоставляется</option>
+        <option>За доплату</option>
+        <option>По договорённости</option>
+      </select>
+
     </div>
-<div class="preview-line">
-    🕐 <span id="pSchedule">График работы</span>
+
+
+    <div class="card">
+
+      <div class="section-title">💼 Занятость</div>
+
+      <div class="check-grid">
+
+        <label class="check">
+          <input type="checkbox" name="employmentType" value="Постоянная работа">
+          Постоянная работа
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="employmentType" value="Временная работа">
+          Временная работа
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="employmentType" value="Полная занятость">
+          Полная занятость
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="employmentType" value="Неполная занятость">
+          Неполная занятость
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="employmentType" value="Посменно">
+          Посменно
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="employmentType" value="Вахта">
+          Вахта
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="employmentType" value="Фушка">
+          Фушка
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="employmentType" value="По договорённости">
+          По договорённости
+        </label>
+
+      </div>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="section-title">🕐 График работы</div>
+
+      <select id="schedule">
+        <option value="">Выберите график</option>
+        <option>Пн–Пт</option>
+        <option>Пн–Сб</option>
+        <option>2/2</option>
+        <option>3/3</option>
+        <option>4/4</option>
+        <option>Дневные смены</option>
+        <option>Ночные смены</option>
+        <option>Гибкий график</option>
+      </select>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="section-title">🗣 Требуемые языки</div>
+
+      <div class="check-grid">
+
+        <label class="check"><input type="checkbox" name="language" value="Чешский">Чешский</label>
+        <label class="check"><input type="checkbox" name="language" value="Русский">Русский</label>
+        <label class="check"><input type="checkbox" name="language" value="Украинский">Украинский</label>
+        <label class="check"><input type="checkbox" name="language" value="Английский">Английский</label>
+        <label class="check"><input type="checkbox" name="language" value="Немецкий">Немецкий</label>
+        <label class="check"><input type="checkbox" name="language" value="Итальянский">Итальянский</label>
+        <label class="check"><input type="checkbox" name="language" value="Испанский">Испанский</label>
+        <label class="check"><input type="checkbox" name="language" value="Польский">Польский</label>
+        <label class="check"><input type="checkbox" name="language" value="Словацкий">Словацкий</label>
+        <label class="check"><input type="checkbox" name="language" value="Французский">Французский</label>
+        <label class="check"><input type="checkbox" name="language" value="Другой">Другой</label>
+
+      </div>
+
+      <div class="note">
+        Можно выбрать несколько языков.
+      </div>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="section-title">📄 Документы</div>
+
+      <div class="check-grid">
+
+        <label class="check"><input type="checkbox" name="document" value="Виза">Виза</label>
+
+        <label class="check">
+          <input type="checkbox" name="document" value="Zaměstnanecká karta">
+          Zaměstnanecká karta
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="document" value="Živnost / IČO">
+          Živnost / IČO
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="document" value="Другие документы">
+          Другие документы
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="document" value="Не имеет значения">
+          Не имеет значения
+        </label>
+
+      </div>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="section-title">🧰 Требования</div>
+
+      <div class="field">
+        <select id="experienceRequired">
+          <option value="">Опыт</option>
+          <option>Опыт требуется</option>
+          <option>Опыт не требуется</option>
+        </select>
+      </div>
+
+      <div class="check-grid">
+
+        <label class="check">
+          <input type="checkbox" id="drivingLicenses">
+          🚗 Водительские права
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="automobile">
+          🚘 Автомобиль
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="qualification">
+          🎓 Квалификация
+        </label>
+
+        <label class="check">
+          <input type="checkbox" id="age18">
+          🔞 18+
+        </label>
+
+      </div>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="field">
+        <label>📝 Описание вакансии <span class="required">*</span></label>
+        <textarea id="description"
+          placeholder="Опишите обязанности, условия работы и другую важную информацию"></textarea>
+      </div>
+
+      <div class="field">
+        <label>📞 Контакт <span class="required">*</span></label>
+        <input id="contact"
+          type="text"
+          placeholder="Телефон, Telegram или другой способ связи">
+      </div>
+
+      <button id="submitBtn" type="submit">
+        📢 Отправить на модерацию
+      </button>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="section-title">👀 Предпросмотр</div>
+
+      <div class="preview">
+
+        <div class="preview-title" id="pTitle">
+          Название вакансии
+        </div>
+
+        <div class="preview-line">
+          📂 <span id="pCategory">Категория</span>
+        </div>
+
+        <div class="preview-line">
+          👷 <span id="pProfession">Профессия</span>
+        </div>
+
+        <div class="preview-line">
+          📍 <span id="pCity">Город</span>
+        </div>
+
+        <div class="preview-line">
+          💰 <span id="pSalary">Зарплата</span>
+        </div>
+
+        <div class="preview-line">
+          🏠 <span id="pHousing">Жильё</span>
+        </div>
+
+        <div class="preview-line">
+          💼 <span id="pEmployment">Занятость</span>
+        </div>
+
+        <div class="preview-line">
+          🕐 <span id="pSchedule">График работы</span>
+        </div>
+
+        <div class="preview-line">
+          🗣 <span id="pLanguages">Языки</span>
+        </div>
+
+        <div class="preview-line">
+          📄 <span id="pDocuments">Документы</span>
+        </div>
+
+        <div class="preview-line">
+          🧰 <span id="pExperience">Опыт</span>
+        </div>
+
+        <div class="preview-line">
+          📞 <span id="pContact">Контакт</span>
+        </div>
+
+        <div class="preview-description" id="pDescription">
+          Здесь будет отображаться описание вакансии.
+        </div>
+
+      </div>
+
+    </div>
+
+  </form>
+
+
+  <div id="success" class="card success hidden">
+    <div class="success-icon">✅</div>
+    <h2>Вакансия отправлена</h2>
+    <p>
+      Вакансия поступила на модерацию.
+      После проверки она будет опубликована.
+    </p>
+  </div>
+
 </div>
-    <div class="preview-line">
-      📞 <span id="pContact">Контакт</span>
-    </div>
 
-    <br>
 
-    <div id="pDescription">
-      Здесь появится описание вакансии
-    </div>
-  </div>
+<script>
 
-  <script>
-    const tg = window.Telegram.WebApp;
+const tg = window.Telegram.WebApp;
 
-    tg.ready();
-    tg.expand();
+tg.ready();
+tg.expand();
 
-    const title = document.getElementById("title");
-    const category = document.getElementById("category");
-    const city = document.getElementById("city");
-    const salary = document.getElementById("salary");
-    const schedule = document.getElementById("schedule");
-    const description = document.getElementById("description");
-    const contact = document.getElementById("contact");
+const API_URL =
+"https://script.google.com/macros/s/AKfycbwGiif2P_hjtiv5jY-CrBn__6LcFw7544x6p4-ioP0LCXlPsE0KBY5cvMICmSGA9nzl/exec";
 
-    const pTitle = document.getElementById("pTitle");
-    const pCategory = document.getElementById("pCategory");
-    const pCity = document.getElementById("pCity");
-    const pSalary = document.getElementById("pSalary");
-    const pSchedule = document.getElementById("pSchedule");
-    const pDescription = document.getElementById("pDescription");
-    const pContact = document.getElementById("pContact");
-    const error = document.getElementById("error");
 
-    function updatePreview() {
-      pTitle.textContent = title.value || "Название вакансии";
-      pCategory.textContent = category.value || "Категория";
-      pCity.textContent = city.value || "Город";
-      pSalary.textContent = salary.value || "Зарплата";
-      pSchedule.textContent = schedule.value || "График работы";
-      pContact.textContent = contact.value || "Контакт";
-      pDescription.textContent =
-        description.value || "Здесь появится описание вакансии";
+const title = document.getElementById("title");
+const category = document.getElementById("category");
+const profession = document.getElementById("profession");
+const city = document.getElementById("city");
+
+const salaryFrom = document.getElementById("salaryFrom");
+const salaryTo = document.getElementById("salaryTo");
+const salaryUnit = document.getElementById("salaryUnit");
+
+const housing = document.getElementById("housing");
+const schedule = document.getElementById("schedule");
+
+const experienceRequired =
+document.getElementById("experienceRequired");
+
+const description =
+document.getElementById("description");
+
+const contact =
+document.getElementById("contact");
+
+const submitBtn =
+document.getElementById("submitBtn");
+
+
+// ---------- PREVIEW ----------
+
+const pTitle = document.getElementById("pTitle");
+const pCategory = document.getElementById("pCategory");
+const pProfession = document.getElementById("pProfession");
+const pCity = document.getElementById("pCity");
+const pSalary = document.getElementById("pSalary");
+const pHousing = document.getElementById("pHousing");
+const pEmployment = document.getElementById("pEmployment");
+const pSchedule = document.getElementById("pSchedule");
+const pLanguages = document.getElementById("pLanguages");
+const pDocuments = document.getElementById("pDocuments");
+const pExperience = document.getElementById("pExperience");
+const pContact = document.getElementById("pContact");
+const pDescription = document.getElementById("pDescription");
+
+
+function getChecked(name) {
+
+  return Array.from(
+    document.querySelectorAll(
+      'input[name="' + name + '"]:checked'
+    )
+  ).map(el => el.value);
+
+}
+
+
+function getEmployment() {
+  return getChecked("employmentType");
+}
+
+
+function formatSalary() {
+
+  const from = salaryFrom.value.trim();
+  const to = salaryTo.value.trim();
+  const unit = salaryUnit.value;
+
+  if (!from && !to && !unit) {
+    return "Зарплата";
+  }
+
+  if (unit === "По договорённости") {
+    return "По договорённости";
+  }
+
+  let result = "";
+
+  if (from && to) {
+    result = from + "–" + to;
+  } else if (from) {
+    result = "от " + from;
+  } else if (to) {
+    result = "до " + to;
+  }
+
+  if (unit) {
+    result += " " + unit;
+  }
+
+  return result || "Зарплата";
+}
+
+
+function updatePreview() {
+
+  pTitle.textContent =
+    title.value.trim() || "Название вакансии";
+
+  pCategory.textContent =
+    category.value || "Категория";
+
+  pProfession.textContent =
+    profession.value || "Профессия";
+
+  pCity.textContent =
+    city.value || "Город";
+
+  pSalary.textContent =
+    formatSalary();
+
+  pHousing.textContent =
+    housing.value || "Жильё";
+
+  const employment =
+    getEmployment();
+
+  pEmployment.textContent =
+    employment.length
+      ? employment.join(", ")
+      : "Занятость";
+
+  pSchedule.textContent =
+    schedule.value || "График работы";
+
+  const languages =
+    getChecked("language");
+
+  pLanguages.textContent =
+    languages.length
+      ? languages.join(", ")
+      : "Языки";
+
+  const documents =
+    getChecked("document");
+
+  pDocuments.textContent =
+    documents.length
+      ? documents.join(", ")
+      : "Документы";
+
+  pExperience.textContent =
+    experienceRequired.value || "Опыт";
+
+  pContact.textContent =
+    contact.value.trim() || "Контакт";
+
+  pDescription.textContent =
+    description.value.trim()
+      || "Здесь будет отображаться описание вакансии.";
+
+}
+
+
+// обновление предпросмотра
+
+document
+  .querySelectorAll("input, select, textarea")
+  .forEach(el => {
+
+    el.addEventListener("input", updatePreview);
+    el.addEventListener("change", updatePreview);
+
+  });
+
+
+updatePreview();
+
+
+// ---------- SUBMIT ----------
+
+document
+  .getElementById("vacancyForm")
+  .addEventListener("submit", async function(e) {
+
+    e.preventDefault();
+
+    const titleValue =
+      title.value.trim();
+
+    const categoryValue =
+      category.value;
+
+    const cityValue =
+      city.value;
+
+    const descriptionValue =
+      description.value.trim();
+
+    const contactValue =
+      contact.value.trim();
+
+    const scheduleValue =
+      schedule.value;
+
+    const salaryFromValue =
+      salaryFrom.value.trim();
+
+    const salaryToValue =
+      salaryTo.value.trim();
+
+    const salaryUnitValue =
+      salaryUnit.value;
+
+
+    if (!titleValue) {
+      tg.showAlert("Введите название вакансии");
+      return;
     }
 
-    [title, category, city, salary,schedule , description, contact].forEach(input => {
-      input.addEventListener("input", updatePreview);
-    });
+    if (!categoryValue) {
+      tg.showAlert("Выберите категорию");
+      return;
+    }
 
-    tg.MainButton.setText("Отправить на модерацию");
-    tg.MainButton.show();
+    if (!cityValue) {
+      tg.showAlert("Выберите город");
+      return;
+    }
 
-    tg.MainButton.onClick(function () {
+    if (
+      !salaryFromValue &&
+      !salaryToValue &&
+      salaryUnitValue !== "По договорённости"
+    ) {
+      tg.showAlert("Укажите зарплату");
+      return;
+    }
 
-      error.style.display = "none";
+    if (!scheduleValue) {
+      tg.showAlert("Выберите график работы");
+      return;
+    }
 
-      if (!title.value.trim()) {
-        error.textContent = "Укажи название вакансии.";
-        error.style.display = "block";
-        return;
+    if (!descriptionValue) {
+      tg.showAlert("Введите описание вакансии");
+      return;
+    }
+
+    if (!contactValue) {
+      tg.showAlert("Укажите контакт");
+      return;
+    }
+
+
+    const employmentTypes =
+      getEmployment();
+
+    const languages =
+      getChecked("language");
+
+    const documents =
+      getChecked("document");
+
+
+    const user =
+      tg.initDataUnsafe &&
+      tg.initDataUnsafe.user
+        ? tg.initDataUnsafe.user
+        : {};
+
+
+    const data = {
+
+      title: titleValue,
+
+      category: categoryValue,
+
+      profession:
+        profession.value.trim(),
+
+      city: cityValue,
+
+      allCzechia:
+        cityValue === "Вся Чехия",
+
+      salaryFrom:
+        salaryFromValue,
+
+      salaryTo:
+        salaryToValue,
+
+      salaryUnit:
+        salaryUnitValue,
+
+      salary:
+        formatSalary(),
+
+      housing:
+        housing.value,
+
+      employmentType:
+        employmentTypes.join(", "),
+
+      workType:
+        employmentTypes.join(", "),
+
+      schedule:
+        scheduleValue,
+
+      languages:
+        languages,
+
+      languageLevel:
+        "",
+
+      documents:
+        documents,
+
+      experienceRequired:
+        experienceRequired.value,
+
+      drivingLicenses:
+        document.getElementById("drivingLicenses").checked,
+
+      automobile:
+        document.getElementById("automobile").checked,
+
+      qualification:
+        document.getElementById("qualification").checked,
+
+      age18:
+        document.getElementById("age18").checked,
+
+      skills:
+        "",
+
+      readyDate:
+        "",
+
+      description:
+        descriptionValue,
+
+      contact:
+        contactValue,
+
+      telegramId:
+        user.id
+          ? String(user.id)
+          : "",
+
+      telegramUsername:
+        user.username
+          ? String(user.username)
+          : "",
+
+      telegramFirstName:
+        user.first_name
+          ? String(user.first_name)
+          : "",
+
+      files:
+        ""
+
+    };
+
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "⏳ Отправляем...";
+
+
+    try {
+
+      const response =
+        await fetch(API_URL, {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "text/plain;charset=utf-8"
+          },
+
+          body:
+            JSON.stringify(data)
+
+        });
+
+
+      const result =
+        await response.json();
+
+
+      if (result.ok) {
+
+        document
+          .getElementById("vacancyForm")
+          .classList.add("hidden");
+
+        document
+          .getElementById("success")
+          .classList.remove("hidden");
+
+        tg.HapticFeedback
+          ?.notification("success");
+
+      } else {
+
+        throw new Error(
+          result.error ||
+          "Ошибка отправки"
+        );
+
       }
 
-      if (!city.value.trim()) {
-        error.textContent = "Укажи город.";
-        error.style.display = "block";
-        return;
-      }
 
-      if (!salary.value.trim()) {
-        error.textContent = "Укажи зарплату.";
-        error.style.display = "block";
-        return;
-      }
+    } catch (error) {
 
-      if (!description.value.trim()) {
-        error.textContent = "Добавь описание вакансии.";
-        error.style.display = "block";
-        return;
-      }
+      console.error(error);
 
-      if (!contact.value.trim()) {
-        error.textContent = "Укажи контакт.";
-        error.style.display = "block";
-        return;
-      }
+      tg.showAlert(
+        "Не удалось отправить вакансию. Попробуйте ещё раз."
+      );
 
-      const data = {
-        title: title.value.trim(),
-        city: city.value.trim(),
-        salary: salary.value.trim(),
-        schedule: schedule.value.trim(),
-        description: description.value.trim(),
-        contact: contact.value.trim()
-      };
+      submitBtn.disabled = false;
 
-      fetch("https://script.google.com/macros/s/AKfycbwGiif2P_hjtiv5jY-CrBn__6LcFw7544x6p4-ioP0LCXlPsE0KBY5cvMICmSGA9nzl/exec", {
-  method: "POST",
-  headers: {
-    "Content-Type": "text/plain;charset=utf-8"
-  },
-  body: JSON.stringify(data)
-})
-.then(() => {
-  tg.MainButton.setText("Отправлено!");
-  tg.MainButton.disable();
-})
-.catch(() => {
-  alert("Ошибка отправки. Попробуйте ещё раз.");
-});
-    });
+      submitBtn.textContent =
+        "📢 Отправить на модерацию";
 
-    updatePreview();
-  </script>
+    }
+
+  });
+
+</script>
 
 </body>
 </html>

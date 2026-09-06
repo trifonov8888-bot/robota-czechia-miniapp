@@ -274,7 +274,18 @@ textarea{
     </select>
 
     <label for="profession">👷 Профессия / должность</label>
-    <input id="profession" type="text" placeholder="Например: Водитель C+E">
+
+<select id="profession">
+  <option value="">Выберите профессию</option>
+</select>
+
+<div id="customProfessionBox" class="hidden">
+  <input
+    id="customProfession"
+    type="text"
+    placeholder="Укажите профессию"
+  >
+</div>
 
     <label for="city">
       📍 Город <span class="required">*</span>

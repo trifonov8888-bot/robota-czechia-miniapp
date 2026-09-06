@@ -238,7 +238,17 @@ textarea{
   <!-- ОСНОВНАЯ ИНФОРМАЦИЯ -->
   <div class="card">
     <div class="section-title">📋 Основная информация</div>
+<label for="announcementType">
+  📢 Тип объявления <span class="required">*</span>
+</label>
 
+<select id="announcementType">
+  <option value="">Выберите тип объявления</option>
+  <option value="Предлагаю работу">📢 Предлагаю работу</option>
+  <option value="Ищу работу">🔎 Ищу работу</option>
+  <option value="Бригада ищет работу">👷 Бригада ищет работу</option>
+  <option value="Ищу бригаду">🤝 Ищу бригаду</option>
+</select>
     <label for="title">
       Название вакансии <span class="required">*</span>
     </label>
@@ -706,6 +716,7 @@ if (tg) {
 ========================================= */
 
 const title = document.getElementById("title");
+const announcementType = document.getElementById("announcementType");
 const category = document.getElementById("category");
 const profession = document.getElementById("profession");
 const customProfessionBox =
@@ -1417,8 +1428,8 @@ function buildData() {
 
   return {
 
-    announcementType:
-      "Предлагаю работу",
+  announcementType:
+  announcementType.value.trim(),
 
     title:
       title.value.trim(),
@@ -1525,7 +1536,9 @@ function buildData() {
 ========================================= */
 
 function validate(data) {
-
+if (!data.announcementType) {
+  return "Выберите тип объявления.";
+}
   if (!data.title) {
     return "Введите название вакансии.";
   }

@@ -102,7 +102,18 @@
     maxlength="70"
     placeholder="Например: Водитель категории C"
   >
-
+<label for="category">📂 Категория *</label>
+<select id="category">
+  <option value="">Выберите категорию</option>
+  <option>Водители</option>
+  <option>Строительство</option>
+  <option>Производство</option>
+  <option>Склад</option>
+  <option>Уборка</option>
+  <option>Рестораны и гостиницы</option>
+  <option>Разнорабочие</option>
+  <option>Другое</option>
+</select>
   <label for="city">Город *</label>
   <input
     id="city"
@@ -173,12 +184,14 @@
     tg.expand();
 
     const title = document.getElementById("title");
+    const category = document.getElementById("category");
     const city = document.getElementById("city");
     const salary = document.getElementById("salary");
     const description = document.getElementById("description");
     const contact = document.getElementById("contact");
 
     const pTitle = document.getElementById("pTitle");
+    const pCategory = document.getElementById("pCategory");
     const pCity = document.getElementById("pCity");
     const pSalary = document.getElementById("pSalary");
     const pDescription = document.getElementById("pDescription");
@@ -187,6 +200,7 @@
 
     function updatePreview() {
       pTitle.textContent = title.value || "Название вакансии";
+      pCategory.textContent = category.value || "Категория";
       pCity.textContent = city.value || "Город";
       pSalary.textContent = salary.value || "Зарплата";
       pContact.textContent = contact.value || "Контакт";
@@ -194,7 +208,7 @@
         description.value || "Здесь появится описание вакансии";
     }
 
-    [title, city, salary, description, contact].forEach(input => {
+    [title, category, city, salary, description, contact].forEach(input => {
       input.addEventListener("input", updatePreview);
     });
 

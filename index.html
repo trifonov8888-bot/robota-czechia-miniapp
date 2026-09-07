@@ -943,8 +943,6 @@ const languagesSelected =
 const languagesApply =
   document.getElementById("languagesApply");
 
-const languagesSearch =
-  document.getElementById("languagesSearch");
 
 const languageCheckboxes =
   document.querySelectorAll(
@@ -1002,13 +1000,7 @@ languagesButton.addEventListener(
       "open"
     );
 
-    if (
-      languagesDropdown.classList.contains(
-        "open"
-      )
-    ) {
-      languagesSearch.focus();
-    }
+  
 
   }
 );
@@ -1028,37 +1020,7 @@ languageCheckboxes.forEach(
 );
 
 
-/* Поиск языков */
 
-languagesSearch.addEventListener(
-  "input",
-  function() {
-
-    const search =
-      languagesSearch.value
-        .trim()
-        .toLowerCase();
-
-    document
-      .querySelectorAll(
-        ".multi-select-option"
-      )
-      .forEach(function(option) {
-
-        const text =
-          option.textContent
-            .trim()
-            .toLowerCase();
-
-        option.style.display =
-          text.includes(search)
-            ? "flex"
-            : "none";
-
-      });
-
-  }
-);
 
 
 /* Кнопка Применить */
@@ -1071,7 +1033,6 @@ languagesApply.addEventListener(
       "open"
     );
 
-    languagesSearch.value = "";
 
     document
       .querySelectorAll(

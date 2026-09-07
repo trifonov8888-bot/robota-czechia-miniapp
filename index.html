@@ -682,58 +682,95 @@ textarea{
   </div>
 
   <!-- ДОКУМЕНТЫ -->
-  <div class="card">
-    <div class="section-title">📄 Документы</div>
+<div class="card">
 
-    <div class="sub-label">
-      Какие документы подходят для работы
-    </div>
+  <div class="section-title">📄 Документы</div>
 
-    <div class="check-grid">
-
-      <label class="check-item">
-        <input type="checkbox" name="documents" value="Виза">
-        Виза
-      </label>
-
-      <label class="check-item">
-        <input
-          type="checkbox"
-          name="documents"
-          value="Zaměstnanecká karta"
-        >
-        Zaměstnanecká karta
-      </label>
-
-      <label class="check-item">
-        <input
-          type="checkbox"
-          name="documents"
-          value="Živnost / IČO"
-        >
-        Živnost / IČO
-      </label>
-
-      <label class="check-item">
-        <input
-          type="checkbox"
-          name="documents"
-          value="Другие документы"
-        >
-        Другие документы
-      </label>
-
-      <label class="check-item">
-        <input
-          type="checkbox"
-          name="documents"
-          value="Не имеет значения"
-        >
-        Не имеет значения
-      </label>
-
-    </div>
+  <div class="subtext">
+    Какие документы подходят для работы
   </div>
+
+  <div class="multi-select" id="documentsSelect">
+
+    <button
+      type="button"
+      class="multi-select-button"
+      id="documentsButton"
+    >
+      <span id="documentsSelected">
+        Выберите документы
+      </span>
+
+      <span class="multi-select-arrow">⌄</span>
+    </button>
+
+    <div
+      class="multi-select-dropdown"
+      id="documentsDropdown"
+    >
+
+      <div class="multi-select-options">
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="documents"
+            value="Виза"
+          >
+          <span>Виза</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="documents"
+            value="Zaměstnanecká karta"
+          >
+          <span>Zaměstnanecká karta</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="documents"
+            value="Živnost / IČO"
+          >
+          <span>Živnost / IČO</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="documents"
+            value="EU паспорт"
+          >
+          <span>🇪🇺 EU паспорт</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="documents"
+            value="Не имеет значения"
+          >
+          <span>Не имеет значения</span>
+        </label>
+
+      </div>
+
+      <button
+        type="button"
+        class="multi-select-apply"
+        id="documentsApply"
+      >
+        Применить
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
 
   <!-- ТРЕБОВАНИЯ -->
   <div class="card">

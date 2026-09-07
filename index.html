@@ -219,7 +219,98 @@ textarea{
 .hidden{
   display:none;
 }
+.multi-select{
+  position:relative;
+  width:100%;
+}
 
+.multi-select-button{
+  width:100%;
+  min-height:52px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  padding:10px 42px 10px 14px;
+  background:var(--card);
+  color:var(--text);
+  font-size:16px;
+  text-align:left;
+  position:relative;
+  cursor:pointer;
+}
+
+.multi-select-button:focus{
+  outline:none;
+  border-color:var(--button);
+}
+
+.multi-select-arrow{
+  position:absolute;
+  right:16px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:20px;
+  color:var(--hint);
+  pointer-events:none;
+}
+
+.multi-select-dropdown{
+  display:none;
+  margin-top:8px;
+  padding:10px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--card);
+}
+
+.multi-select-dropdown.open{
+  display:block;
+}
+
+.multi-select-search{
+  width:100%;
+  margin:0 0 10px;
+  box-sizing:border-box;
+}
+
+.multi-select-options{
+  max-height:250px;
+  overflow-y:auto;
+}
+
+.multi-select-option{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:11px 8px;
+  margin:0;
+  border-radius:10px;
+  font-size:15px;
+  cursor:pointer;
+}
+
+.multi-select-option:hover{
+  background:rgba(255,255,255,.05);
+}
+
+.multi-select-option input{
+  width:20px;
+  height:20px;
+  margin:0;
+  flex:none;
+}
+
+.multi-select-apply{
+  width:100%;
+  margin-top:10px;
+  padding:12px;
+  border:0;
+  border-radius:12px;
+  background:var(--button);
+  color:var(--button-text);
+  font-size:16px;
+  font-weight:600;
+  cursor:pointer;
+}
 @media(max-width:480px){
   .salary-row,
   .check-grid{
@@ -434,71 +525,154 @@ textarea{
   </div>
 
   <!-- ЯЗЫКИ -->
-  <div class="card">
-    <div class="section-title">🗣 Языки</div>
+<div class="card">
+  <div class="section-title">💬 Языки</div>
 
-    <div class="sub-label">
-      Выберите языки, которые требуются для работы
+  <div class="sub-label">
+    Можно выбрать несколько
+  </div>
+
+  <div class="multi-select" id="languagesSelect">
+
+    <button
+      type="button"
+      class="multi-select-button"
+      id="languagesButton"
+    >
+      <span id="languagesSelected">
+        Выберите языки
+      </span>
+
+      <span class="multi-select-arrow">⌄</span>
+    </button>
+
+    <div
+      class="multi-select-dropdown"
+      id="languagesDropdown"
+    >
+
+      <input
+        type="text"
+        class="multi-select-search"
+        id="languagesSearch"
+        placeholder="Поиск..."
+        autocomplete="off"
+      >
+
+      <div class="multi-select-options">
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Чешский"
+          >
+          <span>Чешский</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Русский"
+          >
+          <span>Русский</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Украинский"
+          >
+          <span>Украинский</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Английский"
+          >
+          <span>Английский</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Немецкий"
+          >
+          <span>Немецкий</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Итальянский"
+          >
+          <span>Итальянский</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Испанский"
+          >
+          <span>Испанский</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Польский"
+          >
+          <span>Польский</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Словацкий"
+          >
+          <span>Словацкий</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Французский"
+          >
+          <span>Французский</span>
+        </label>
+
+        <label class="multi-select-option">
+          <input
+            type="checkbox"
+            name="languages"
+            value="Другой"
+          >
+          <span>Другой</span>
+        </label>
+
+      </div>
+
+      <button
+        type="button"
+        class="multi-select-apply"
+        id="languagesApply"
+      >
+        Применить
+      </button>
+
     </div>
-
-    <div class="check-grid">
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Чешский">
-        Чешский
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Русский">
-        Русский
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Украинский">
-        Украинский
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Английский">
-        Английский
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Немецкий">
-        Немецкий
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Итальянский">
-        Итальянский
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Испанский">
-        Испанский
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Польский">
-        Польский
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Словацкий">
-        Словацкий
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Французский">
-        Французский
-      </label>
-
-      <label class="check-item">
-        <input type="checkbox" name="languages" value="Другой">
-        Другой
-      </label>
-
-    </div>
+  </div>
+</div>
 
     <label for="languageLevel">Уровень языка</label>
 
@@ -723,7 +897,203 @@ if (tg) {
   tg.expand();
 }
 
+/* =====================================================
+   МУЛЬТИСЕЛЕКТ ЯЗЫКОВ
+===================================================== */
 
+const languagesButton =
+  document.getElementById("languagesButton");
+
+const languagesDropdown =
+  document.getElementById("languagesDropdown");
+
+const languagesSelected =
+  document.getElementById("languagesSelected");
+
+const languagesApply =
+  document.getElementById("languagesApply");
+
+const languagesSearch =
+  document.getElementById("languagesSearch");
+
+const languageCheckboxes =
+  document.querySelectorAll(
+    'input[name="languages"]'
+  );
+
+
+function updateLanguagesSelected() {
+
+  const selected = Array.from(
+    languageCheckboxes
+  ).filter(function(checkbox) {
+    return checkbox.checked;
+  });
+
+  if (selected.length === 0) {
+
+    languagesSelected.innerHTML =
+      "Выберите языки";
+
+    languagesApply.textContent =
+      "Применить";
+
+    return;
+  }
+
+  languagesSelected.innerHTML =
+    selected.map(function(checkbox) {
+
+      return (
+        '<span class="language-tag">' +
+          checkbox.value +
+          ' <b data-language="' +
+          checkbox.value +
+          '">×</b>' +
+        '</span>'
+      );
+
+    }).join(" ");
+
+  languagesApply.textContent =
+    "Применить (" +
+    selected.length +
+    ")";
+}
+
+
+/* Открыть / закрыть список */
+
+languagesButton.addEventListener(
+  "click",
+  function() {
+
+    languagesDropdown.classList.toggle(
+      "open"
+    );
+
+    if (
+      languagesDropdown.classList.contains(
+        "open"
+      )
+    ) {
+      languagesSearch.focus();
+    }
+
+  }
+);
+
+
+/* Обновлять выбранные языки */
+
+languageCheckboxes.forEach(
+  function(checkbox) {
+
+    checkbox.addEventListener(
+      "change",
+      updateLanguagesSelected
+    );
+
+  }
+);
+
+
+/* Поиск языков */
+
+languagesSearch.addEventListener(
+  "input",
+  function() {
+
+    const search =
+      languagesSearch.value
+        .trim()
+        .toLowerCase();
+
+    document
+      .querySelectorAll(
+        ".multi-select-option"
+      )
+      .forEach(function(option) {
+
+        const text =
+          option.textContent
+            .trim()
+            .toLowerCase();
+
+        option.style.display =
+          text.includes(search)
+            ? "flex"
+            : "none";
+
+      });
+
+  }
+);
+
+
+/* Кнопка Применить */
+
+languagesApply.addEventListener(
+  "click",
+  function() {
+
+    languagesDropdown.classList.remove(
+      "open"
+    );
+
+    languagesSearch.value = "";
+
+    document
+      .querySelectorAll(
+        ".multi-select-option"
+      )
+      .forEach(function(option) {
+
+        option.style.display = "flex";
+
+      });
+
+    updateLanguagesSelected();
+
+  }
+);
+
+
+/* Удаление языка через × */
+
+languagesSelected.addEventListener(
+  "click",
+  function(event) {
+
+    const language =
+      event.target.dataset.language;
+
+    if (!language) {
+      return;
+    }
+
+    const checkbox =
+      document.querySelector(
+        'input[name="languages"][value="' +
+        language +
+        '"]'
+      );
+
+    if (checkbox) {
+      checkbox.checked = false;
+    }
+
+    updateLanguagesSelected();
+
+    event.stopPropagation();
+
+  }
+);
+
+
+/* Первоначальное состояние */
+
+updateLanguagesSelected();
 /* =========================================
    ЭЛЕМЕНТЫ ФОРМЫ
 ========================================= */

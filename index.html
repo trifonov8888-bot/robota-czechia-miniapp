@@ -2279,7 +2279,20 @@ submitButton.addEventListener(
 
 updateProfessionList();
 updatePreview();
+document.addEventListener("click", function(event) {
+  const active = document.activeElement;
 
+  if (
+    active &&
+    (
+      active.tagName === "INPUT" ||
+      active.tagName === "TEXTAREA"
+    ) &&
+    !active.contains(event.target)
+  ) {
+    active.blur();
+  }
+});
 </script>
 
 </body>

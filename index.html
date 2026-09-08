@@ -1242,6 +1242,15 @@ updateDocumentsSelected();
 
 const title = document.getElementById("title");
 const announcementType = document.getElementById("announcementType");
+announcementType.addEventListener("change", function () {
+  const titleLabel = document.querySelector('label[for="title"]');
+
+  if (this.value === "Ищу работу") {
+    titleLabel.innerHTML = "👤 Желаемая должность <span class=\"required\">*</span>";
+  } else {
+    titleLabel.innerHTML = "📋 Название вакансии <span class=\"required\">*</span>";
+  }
+});
 const category = document.getElementById("category");
 const profession = document.getElementById("profession");
 const customProfessionBox =

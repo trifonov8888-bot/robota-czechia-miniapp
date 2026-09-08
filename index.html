@@ -55,6 +55,60 @@ else if(type==='Ищу работу'){html=input('candidateName','👤 Имя',t
 else if(type==='Бригада ищет работу'){html=input('title','👷 Название бригады','Например: Бригада отделочников')+field('👥 Количество человек','brigadeSize','<input id="brigadeSize" type="number" min="1" max="100" placeholder="Например: 6">',true)+catSelect()+textarea('specialization','🏗 Специализация','Например: фасадные работы, монолит, кровля',true)+textarea('professions','🛠 Виды работ','Перечислите работы, которые выполняете',true)+field('📍 Город','city','<select id="city">'+opts(cities,'Выберите город')+'</select>',true)+field('🗺 Мобильность','mobility','<select id="mobility">'+opts(['Только свой город','По своему региону','По всей Чехии'],'Выберите')+'</select>')+commonWork()+field('🚚 Транспорт','transport','<select id="transport">'+opts(['Есть','Нет'],'Выберите')+'</select>')+languagesBlock()+docsBlock(true)+field('💼 Опыт','experience','<select id="experience">'+opts(['Без опыта','До 1 года','1–3 года','3–5 лет','5–10 лет','Более 10 лет'],'Выберите')+'</select>')+housingForCandidate()+textarea('qualification','🎓 Квалификация','Квалификация бригады')+textarea('skills','🛠 Навыки','Основные навыки')+field('📅 Готовность к работе','readyDate','<div class="date-wrap"><input id="readyDate" type="date" lang="ru-RU"><button type="button" class="date-btn" id="readyDateBtn">📅</button></div>')+textarea('description','👷 О бригаде','Расскажите о бригаде, опыте и условиях',true)+filesBlock()+contactBlock();}
 else {html=input('title','🤝 Что за работа / объект',true)+catSelect()+profBlock('👷 Какая профессия нужна',false)+field('📍 Город','city','<select id="city">'+opts(cities,'Выберите город')+'</select>',true)+field('👥 Количество человек','brigadeSize','<input id="brigadeSize" type="number" min="1" max="100" placeholder="Например: 4">',true)+salaryBlock('Оплата')+commonWork()+housingEmployer()+languagesBlock()+docsBlock(false)+field('💼 Опыт','experienceRequired','<select id="experienceRequired">'+opts(['Требуется','Не требуется'],'Выберите')+'</select>')+textarea('requirements','📋 Требования','Что должна уметь / иметь бригада')+textarea('qualification','🎓 Квалификация','Нужная квалификация')+textarea('skills','🛠 Навыки','Какие навыки нужны')+field('📅 Дата начала','readyDate','<div class="date-wrap"><input id="readyDate" type="date" lang="ru-RU"><button type="button" class="date-btn" id="readyDateBtn">📅</button></div>')+textarea('description','📝 Описание работы','Опишите объект и условия для бригады',true)+contactBlock();}
 html+='<div id="livePreview" class="live-preview"></div><button type="button" id="submitButton" class="button">📤 Отправить на модерацию</button>';
+function fillTestData(){
+  const set=(id,value)=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.value=value;
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    el.dispatchEvent(new Event('change',{bubbles:true}));
+  };
+
+  set('title','Водитель C+E');
+  set('candidateName','Иван Тестовый');
+  set('category','Транспорт');
+  set('city','Прага');
+  set('salaryFrom','45000');
+  set('salaryTo','60000');
+  set('salaryUnit','Kč/месяц');
+  set('workType','Постоянная работа');
+  set('employmentType','Полная занятость');
+  set('schedule','Пн–Пт');
+  set('housing','Предоставляется');
+  set('languageLevel','B1');
+  set('experience','3 года');
+  set('experienceRequired','Опыт требуется');
+  set('drivingLicenses','Есть');
+  set('automobile','Есть');
+  set('qualification','Профессиональная');
+  set('skills','Работа с тахографом, аккуратное вождение');
+  set('age18','true');
+  set('readyDate','10.09.2026');
+  set('description','Тестовая вакансия для проверки работы формы, модерации и публикации.');
+  set('requirements','Опыт от 2 лет, водительские права C+E.');
+  set('contact','+420777123456');
+
+  setTimeout(()=>{
+    document.querySelectorAll('input[name="profession"]').forEach(el=>{
+      if(el.value==='Водитель C+E')el.checked=true;
+    });
+
+    document.querySelectorAll('input[name="lang"]').forEach(el=>{
+      if(el.value==='Чешский'||el.value==='Русский')el.checked=true;
+    });
+
+    document.querySelectorAll('input[name="doc"]').forEach(el=>{
+      if(el.value==='EU паспорт'||el.value==='Zaměstnanecká karta')el.checked=true;
+    });
+
+    document.querySelectorAll('input[name="license"]').forEach(el=>{
+      if(el.value==='C'||el.value==='CE')el.checked=true;
+    });
+
+    updateLivePreview(currentType);
+  },200);
+}
+ html+='<button type="button" class="button" onclick="fillTestData()">🧪 Заполнить тестовыми данными</button>';                         
 let currentType='Предлагаю работу';function updateMultiSummary(name,empty='Выберите'){let a=checked(name),el=document.getElementById('sum_'+name);if(el)el.textContent=a.length?a.join(', '):empty;}
 function toggleCustomProfession(){let a=checked('profession'),custom=document.getElementById('customProfession');if(custom)custom.classList.toggle('hidden',a.indexOf('Другой специалист')<0);updateMultiSummary('profession','Выберите профессию');}
 

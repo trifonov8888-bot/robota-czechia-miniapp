@@ -57,7 +57,7 @@ else {html=input('title','🤝 Что за работа / объект',true)+ca
 html+='<div id="livePreview" class="live-preview"></div><button type="button" id="submitButton" class="button">📤 Отправить на модерацию</button>';let target=document.getElementById(targetId)||document.getElementById('formArea');target.innerHTML=html; activeSubmissionId=''; bindForm(type,targetId);updateLivePreview(type);}
 
 let currentType='Предлагаю работу'; let activeSubmissionId=''; let myProfilesPromise=null; window.myProfilesCache=null;
-function prefetchMyProfiles(){let uid=String(tg?.initDataUnsafe?.user?.id||'');if(!uid)return null;if(!myProfilesPromise)myProfilesPromise=apiPost({action:'getMyProfiles',userId:uid}).catch(e=>{myProfilesPromise=null;throw e;});return myProfilesPromise;}
+function prefetchMyProfiles(){let uid=String(tg?.initDataUnsafe?.user?.id||'');if(!uid)return null;if(!myProfilesPromise)myProfilesPromise=apiPost({action:'getMyProfiles',userId:uid},15000,'profile').catch(e=>{myProfilesPromise=null;throw e;});return myProfilesPromise;}
 function updateMultiSummary(name,empty='Выберите'){let a=checked(name),el=document.getElementById('sum_'+name);if(el)el.textContent=a.length?a.join(', '):empty;}
 function toggleCustomProfession(){let a=checked('profession'),custom=document.getElementById('customProfession');if(custom)custom.classList.toggle('hidden',a.indexOf('Другой специалист')<0);updateMultiSummary('profession','Выберите профессию');}
 
@@ -100,7 +100,9 @@ async function submitForm(type){
     const uploads=[];
     if((type==='Ищу работу'||type==='Бригада ищет работу')&&r.id&&(photoFile||resumeFile)){
       msg.innerHTML='<p class="success">✅ Заявка принята и поставлена в очередь на модерацию.</p><p class="muted">⏳ Ждём сохранения профиля и сейчас загружаем прикреплённые файлы отдельно. Подождите, пожалуйста.</p>';
-      const entityId=await waitForEntity(activeSubmissionId,r.id);
+      // Профиль уже сохранён до ответа API, поэтому отдельный минутный polling
+      // больше не нужен. Для кандидата используем стабильный profileId из ответа.
+      const entityId=type==='Ищу работу'?(r.profileId||r.id):r.id;
       if(type==='Ищу работу'){
         if(photoFile)uploads.push(uploadSelectedFile('candidatePhoto',entityId,photoFile));
         if(resumeFile)uploads.push(uploadSelectedFile('candidateResume',entityId,resumeFile));
@@ -120,18 +122,6 @@ async function submitForm(type){
     if(btn){btn.disabled=false;btn.textContent='📤 Отправить на модерацию';}
     msg.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';
   }
-}
-async function waitForEntity(submissionId,fallbackId,timeoutMs=90000){
-  if(!submissionId)return fallbackId;
-  const started=Date.now();
-  while(Date.now()-started<timeoutMs){
-    try{
-      const r=await apiPost({action:'getSubmissionStatus',submissionId:submissionId,userId:clientUser().id},15000);
-      if(r.ok&&r.ready&&r.id)return r.id;
-    }catch(e){}
-    await new Promise(resolve=>setTimeout(resolve,2000));
-  }
-  return fallbackId;
 }
 async function fileToDataUrl(file){if(!file)return '';if(file.size>MAX_RESUME_BYTES)throw new Error('Файл слишком большой. Максимум — 12 МБ.');return await new Promise((resolve,reject)=>{let r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Не удалось прочитать файл'));r.readAsDataURL(file);});}
 async function uploadSelectedFile(fileKind,entityId,file){
@@ -247,7 +237,7 @@ async function loadMyProfiles(){
   if(!uid){box.textContent='Откройте Mini App из Telegram.';return;}
   if(window.myProfilesCache){renderMyProfiles(window.myProfilesCache);prefetchMyProfiles().then(r=>{window.myProfilesCache=r;}).catch(()=>{});return;}
   box.innerHTML='<p class="muted">Загрузка профилей...</p>';
-  try{let r=myProfilesPromise?await myProfilesPromise:await apiPost({action:'getMyProfiles',userId:uid});myProfilesPromise=null;if(!r.ok)throw new Error(r.error||'Ошибка загрузки');window.myProfilesCache=r;renderMyProfiles(r);}catch(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}
+  try{let r=myProfilesPromise?await myProfilesPromise:await apiPost({action:'getMyProfiles',userId:uid},15000,'profile');myProfilesPromise=null;if(!r.ok)throw new Error(r.error||'Ошибка загрузки');window.myProfilesCache=r;renderMyProfiles(r);}catch(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}
 }
 
 function setEditReturnContext(kind,id){window.editReturnContext={kind:kind,id:id?String(id):''};}
@@ -281,7 +271,7 @@ async function openMyEntity(type,id){
     window.lastDetailContext='profile';
     document.getElementById('profilePanel').classList.add('hidden');document.getElementById('detailPanel').classList.remove('hidden');
     document.getElementById('detailContent').innerHTML='<p class="muted">Загрузка профиля...</p>';
-    try{let r=await apiPost({action:'getMyEmployer',employerId:decodeURIComponent(id),userId:clientUser().id});if(!r.ok)throw new Error(r.error||'Не найдено');let o=r.profile;let anns=(r.announcements||[]).slice().sort((a,b)=>new Date(b['Дата обновления']||b['Дата создания']||0)-new Date(a['Дата обновления']||a['Дата создания']||0));
+    try{let r=await apiPost({action:'getMyEmployer',employerId:decodeURIComponent(id),userId:clientUser().id},15000,'profile');if(!r.ok)throw new Error(r.error||'Не найдено');let o=r.profile;let anns=(r.announcements||[]).slice().sort((a,b)=>new Date(b['Дата обновления']||b['Дата создания']||0)-new Date(a['Дата обновления']||a['Дата создания']||0));
       document.getElementById('detailContent').innerHTML='<div class="section-title">🏢 '+esc(o['Компания']||'Работодатель')+'</div>'+line('ID',o.employer_id)+line('Контактное лицо',o['Контактное лицо'])+line('Телефон',o['Телефон'])+line('Telegram',o['Telegram']?('@'+String(o['Telegram']).replace(/^@/,'')):'')+line('Email',o['Email'])+line('Город',o['Город'])+line('Описание',o['Описание'])+line('Сайт',o['Сайт'])+'<div class="divider"></div><div class="section-title">📢 Мои вакансии ('+anns.length+')</div>'+(anns.length?anns.map(a=>announcementCard('vacancy',a)).join(''):'<p class="muted">Пока нет вакансий.</p>')+'<button class="result-btn" onclick="setEditReturnContext(\'employer\',window.currentEmployerProfileId);editEntity(\'employer\',\''+encodeURIComponent(o.employer_id)+'\')">✏️ Редактировать профиль</button>';
     }catch(e){document.getElementById('detailContent').innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}return;
   }
@@ -291,7 +281,7 @@ async function openMyEntity(type,id){
     document.getElementById('profilePanel').classList.add('hidden');document.getElementById('detailPanel').classList.remove('hidden');document.getElementById('detailContent').innerHTML='<p class="muted">Загрузка профиля...</p>';
     try{
       let local=null;if(window.myProfilesCache&&Array.isArray(window.myProfilesCache.candidates)){local=window.myProfilesCache.candidates.find(c=>String(c.profile_id||'')===String(window.currentCandidateProfileId));}
-      let r=local?{ok:true,profile:local,announcements:local.announcements||[]}:await apiPost({action:'getMyCandidateProfile',userId:clientUser().id});
+      let r=local?{ok:true,profile:local,announcements:local.announcements||[]}:await apiPost({action:'getMyCandidateProfile',userId:clientUser().id},15000,'profile');
       if(!r.ok)throw new Error(r.error||'Не найдено');window.currentCandidateProfile=r.profile||{};let p=r.profile||{},anns=(r.announcements||[]).slice().sort((a,b)=>new Date(b['Дата обновления']||b['Дата создания']||0)-new Date(a['Дата обновления']||a['Дата создания']||0));
       document.getElementById('detailContent').innerHTML='<div class="section-title">👤 '+esc(p.name||'Профиль соискателя')+'</div>'+line('ID',p.profile_id)+line('Желаемая должность',p.title)+line('Профессия',p.profession)+line('Категория',p.category)+line('Город',p.city)+line('Зарплата',(p.salaryFrom?'от '+p.salaryFrom+' ':'')+(p.salaryTo?'до '+p.salaryTo+' ':'')+(p.salaryUnit||''))+line('Тип работы',p.workType)+line('Занятость',p.employmentType)+line('График',p.schedule)+line('Жильё',p.housing)+line('Языки',p.languages)+line('Уровень языка',p.languageLevel)+line('Документы',p.documents)+line('Опыт',p.experience)+line('Права',p.drivingLicenses+(p.licenseCategories?', '+p.licenseCategories:''))+line('Автомобиль',p.automobile)+line('Квалификация',p.qualification)+line('Навыки',p.skills)+line('Готовность',displayValue(p.readyDate))+line('О себе',p.about)+'<div class="divider"></div><div class="section-title">📢 Мои объявления ('+anns.length+')</div>'+(anns.length?anns.map(a=>announcementCard('candidate',a)).join(''):'<p class="muted">Пока нет объявлений.</p>')+'<button class="result-btn secondary" onclick="editEntity(\'candidate\',\''+encodeURIComponent(p.profile_id)+'\')">✏️ Редактировать профиль</button>';
     }catch(e){document.getElementById('detailContent').innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}return;

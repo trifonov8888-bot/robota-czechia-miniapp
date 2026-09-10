@@ -200,7 +200,10 @@ async function submitForm(type){
   let selectedProfessions=checked('profession');
   if(selectedProfessions.indexOf('Другой специалист')>=0){let customProfession=g('customProfession');selectedProfessions=selectedProfessions.filter(x=>x!=='Другой специалист');if(customProfession)selectedProfessions.push(customProfession);}
   d.profession=selectedProfessions.join(', ');d.city=g('city');d.salaryFrom=g('salaryFrom');d.salaryTo=g('salaryTo');d.salaryUnit=g('salaryUnit');let cooperation=g('cooperationType')||g('workType'),coopParts=cooperation.split(' · ');d.workType=coopParts[0]||'';d.employmentType=coopParts.slice(1).join(' · ')||'';d.schedule=g('schedule');d.housing=g('housing');d.languages=languageData();d.languageLevel='';d.documents=checked('doc');d.experience=g('experience');d.experienceRequired=g('experienceRequired');d.drivingLicenses=g('drivingLicenses');d.licenseCategories=checked('license');d.automobile=g('automobile');d.qualification=g('qualification');d.skills=g('skills');d.age18=g('age18')==='true';d.readyDate=g('readyDate');d.description=g('description');d.contact=g('contact');d.brigadeSize=g('brigadeSize');d.specialization=checked('specialization').join(', ');d.workTypes=checked('workTypes').join(', ');d.professions=d.workTypes;d.mobility=g('mobility');d.transport=g('transport');d.requirements=g('requirements');d.ownEquipment=g('ownEquipment');
-  try{d.generatedImage=generateAnnouncementCard(type,d);}catch(imageErr){console.warn('Не удалось создать графическую карточку:',imageErr);d.generatedImage='';}
+  let generatedImage='';
+  try{generatedImage=generateAnnouncementCard(type,d);}catch(imageErr){console.warn('Не удалось создать графическую карточку:',imageErr);generatedImage='';}
+  // Графическую карточку не отправляем в основном POST: она загружается отдельным запросом сразу после сохранения объявления.
+  delete d.generatedImage;
   const photoFile=document.getElementById('photoFile')?.files?.[0]||null;
   const resumeFile=document.getElementById('resumeFile')?.files?.[0]||null;
   if(photoFile&&!validateSelectedFile(document.getElementById('photoFile')))return;
@@ -214,6 +217,10 @@ async function submitForm(type){
     msg.innerHTML='<p class="success">✅ Заявка принята и отправлена на модерацию.</p><p class="muted">⏳ Загружаем прикреплённые файлы отдельно.</p>';
     if(btn){btn.disabled=false;btn.textContent='Готово';}
     const uploads=[];
+    const generatedEntityId=type==='Ищу работу'?(r.profileId||r.id):r.id;
+    if(generatedImage&&generatedEntityId){
+      uploads.push(uploadGeneratedCard(type,generatedEntityId,generatedImage,r.id));
+    }
     if((type==='Ищу работу'||type==='Бригада ищет работу')&&r.id&&(photoFile||resumeFile)){
       msg.innerHTML='<p class="success">✅ Заявка принята и отправлена на модерацию.</p><p class="muted">⏳ Загружаем прикреплённые файлы отдельно. Подождите, пожалуйста.</p>';
       // Профиль уже сохранён до ответа API, поэтому отдельный минутный polling
@@ -240,6 +247,12 @@ async function submitForm(type){
   }
 }
 async function fileToDataUrl(file){if(!file)return '';if(file.size>MAX_RESUME_BYTES)throw new Error('Файл слишком большой. Максимум — 12 МБ.');return await new Promise((resolve,reject)=>{let r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Не удалось прочитать файл'));r.readAsDataURL(file);});}
+async function uploadGeneratedCard(type,entityId,dataUrl,announcementId){
+  if(!dataUrl||!entityId)return null;
+  const r=await apiPost({action:'uploadFile',fileKind:'generatedCard',entityId:entityId,announcementId:announcementId||'',entityType:type,userId:clientUser().id,dataUrl:dataUrl},90000);
+  if(!r.ok)throw new Error(r.error||'Не удалось загрузить графическую карточку');
+  return r;
+}
 async function uploadSelectedFile(fileKind,entityId,file){
   if(!file)return null;
   let dataUrl;

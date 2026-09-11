@@ -194,7 +194,56 @@ function renderLanguageLevels(){const box=document.getElementById('languageLevel
 function languageData(){const out=[];document.querySelectorAll('#languageLevels select[data-language]').forEach(s=>{out.push(s.dataset.language+(s.value?' — '+s.value:''));});return out;}
 function bindCategoryDependentLists(type){const cat=document.getElementById('category');if(!cat)return;const render=()=>{const c=cat.value||'';const sp=document.getElementById('specializationChecks'),wt=document.getElementById('workTypesChecks');if(sp)sp.innerHTML=brigadeSpecializations(c).map(x=>'<label class="check"><input type="checkbox" name="specialization" value="'+esc(x)+'"> '+esc(x)+'</label>').join('');if(wt)wt.innerHTML=brigadeWorkTypes(c).map(x=>'<label class="check"><input type="checkbox" name="workTypes" value="'+esc(x)+'"> '+esc(x)+'</label>').join('');updateMultiSummary('specialization','Выберите');updateMultiSummary('workTypes','Выберите');updateLivePreview(type);};cat.onchange=()=>{render();autoTitleFromCategory('');};render();}
 function selectedMulti(name){return checked(name);}
-function bindTitleSmart(type){const input=document.getElementById('title'),box=document.getElementById('titleSuggestions'),cat=document.getElementById('category');if(!input||!box)return;const run=()=>{const q=input.value.trim();if(!q){box.classList.add('hidden');box.innerHTML='';return;}/* ВАЖНО: умный ввод всегда ищет по ВСЕМ профессиям. Выбранная ранее категория не должна сужать поиск. */const matches=smartProfessionMatches(q,'');if(!matches.length){box.innerHTML='<div class="smart-label">Не нашли точного варианта — продолжите ввод или используйте своё название.</div>';box.classList.remove('hidden');return;}box.innerHTML='<div class="smart-label">💡 Подходящие варианты:</div>'+matches.map(m=>'<div class="smart-suggestion" data-p="'+esc(m.x)+'" data-c="'+esc(m.category)+'"><span class="smart-title">'+esc(m.x)+'</span><span class="smart-meta">📂 '+esc(m.category)+'</span></div>').join('');box.classList.remove('hidden');box.querySelectorAll('.smart-suggestion').forEach(el=>el.onclick=()=>{const p=el.dataset.p,c=el.dataset.c;input.value=p;if(cat&&c){cat.value=c;cat.dispatchEvent(new Event('change'));}setTimeout(()=>{populateProfessions(c,p);const cb=[...document.querySelectorAll('input[name=profession]')].find(x=>x.value===p);if(cb){cb.checked=true;updateMultiSummary('profession','Выберите профессию');}updateLivePreview(type);},0);box.classList.add('hidden');});};input.oninput=run;input.onfocus=run;}
+function bindTitleSmart(type){
+  const input=document.getElementById('title'),box=document.getElementById('titleSuggestions'),cat=document.getElementById('category');
+  if(!input||!box)return;
+
+  const applySuggestion=(p,c)=>{
+    input.value=p;
+    if(cat&&c){cat.value=c;cat.dispatchEvent(new Event('change'));}
+    setTimeout(()=>{
+      populateProfessions(c,p);
+      const cb=[...document.querySelectorAll('input[name=profession]')].find(x=>x.value===p);
+      if(cb){cb.checked=true;updateMultiSummary('profession','Выберите профессию');}
+      updateLivePreview(type);
+    },0);
+    box.classList.add('hidden');
+    box.innerHTML='';
+  };
+
+  const run=()=>{
+    const q=input.value.trim();
+    if(!q){box.classList.add('hidden');box.innerHTML='';return;}
+
+    // Ищем всегда по всей таксономии, независимо от уже выбранной категории.
+    let matches=smartProfessionMatches(q,'');
+    // Точное название всегда должно находиться даже при проблемах с alias-индексом.
+    if(!matches.length){
+      const nq=normalizeQuery(q);
+      const all=allProfessions().filter(x=>x!=='Другой специалист');
+      matches=all.map(x=>({x,category:professionCategoryFor_(x),score:normalizeQuery(x)===nq?1000:0}))
+        .filter(x=>x.score>0);
+    }
+
+    if(!matches.length){
+      box.innerHTML='<div class="smart-label">Не нашли точного варианта — продолжите ввод или используйте своё название.</div>';
+      box.classList.remove('hidden');
+      return;
+    }
+
+    box.innerHTML='<div class="smart-label">💡 Подходящие варианты:</div>'+
+      matches.slice(0,8).map(m=>'<div class="smart-suggestion" data-p="'+esc(m.x)+'" data-c="'+esc(m.category)+'"><span class="smart-title">'+esc(m.x)+'</span><span class="smart-meta">📂 '+esc(m.category)+'</span></div>').join('');
+    box.classList.remove('hidden');
+
+    box.querySelectorAll('.smart-suggestion').forEach(el=>{
+      el.onclick=()=>applySuggestion(el.dataset.p,el.dataset.c);
+    });
+  };
+
+  input.oninput=run;
+  input.onkeyup=run;
+  input.onfocus=run;
+}
 function autoTitleFromCategory(){}
 function bindForm(type,targetId='formArea'){const root=document.getElementById(targetId)||document.getElementById('formArea');bindCategoryDependentLists(type);bindTitleSmart(type);const cat=root.querySelector('#category'),custom=root.querySelector('#customProfession');if(cat&&!(type==='Бригада ищет работу'||type==='Ищу бригаду'))cat.onchange=()=>{populateProfessions(cat.value,'');if(custom)custom.classList.add('hidden');updateMultiSummary('profession','Выберите профессию');updateLivePreview(type);};root.querySelectorAll('input[name=profession]').forEach(x=>x.onchange=()=>{toggleCustomProfession();updateLivePreview(type);});root.querySelectorAll('input[name=lang]').forEach(x=>x.onchange=()=>{renderLanguageLevels();updateLivePreview(type);});if(custom)custom.oninput=()=>{updateMultiSummary('profession','Выберите профессию');updateLivePreview(type);};root.querySelector('#submitButton').onclick=()=>submitForm(type);root.querySelectorAll('input[type=file]').forEach(f=>f.onchange=()=>{if(validateSelectedFile(f)){previewFile(f);updateLivePreview(type);}});const readyDate=root.querySelector('#readyDate'),readyDateBtn=root.querySelector('#readyDateBtn');if(readyDate){readyDate.disabled=false;readyDate.addEventListener('click',()=>{if(typeof readyDate.showPicker==='function'){try{readyDate.showPicker();}catch(e){}}});readyDate.addEventListener('focus',()=>{if(typeof readyDate.showPicker==='function'){try{readyDate.showPicker();}catch(e){}}});}if(readyDateBtn&&readyDate)readyDateBtn.onclick=()=>{if(typeof readyDate.showPicker==='function'){try{readyDate.showPicker();return;}catch(e){}}readyDate.focus();};root.querySelectorAll('input:not([type=file]),select,textarea').forEach(el=>{el.addEventListener('input',()=>updateLivePreview(type));el.addEventListener('change',()=>updateLivePreview(type));});root.querySelectorAll('input[name=specialization],input[name=workTypes]').forEach(x=>x.onchange=()=>{updateMultiSummary(x.name,'Выберите');updateLivePreview(type);});renderLanguageLevels();}
 const MAX_RESUME_BYTES=12*1024*1024; const PHOTO_MAX_BYTES=2.5*1024*1024; const PHOTO_MAX_SIDE=1600;

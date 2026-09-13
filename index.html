@@ -482,13 +482,33 @@ async function runSearch(){
   catch(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}
 }
 function line(l,v){return v?'<div class="line"><span class="muted">'+esc(l)+':</span> '+esc(v)+'</div>' : '';}
+function openSearchCandidate(id){
+  window.lastDetailContext='search';
+  var aid=decodeURIComponent(id), cached=(window.searchResultCache&&window.searchResultCache.candidates&&window.searchResultCache.candidates[String(aid)])||null;
+  document.getElementById('searchPanel').classList.add('hidden');document.getElementById('detailPanel').classList.remove('hidden');
+  var box=document.getElementById('detailContent');
+  if(cached){try{box.innerHTML=candidateAnnouncementHtml(cached,false)+candidatePremiumActionHtml_(aid);}catch(e){box.innerHTML='<p class="error">❌ Не удалось открыть объявление: '+esc(e.message)+'</p>';return;}
+    apiPost({action:'getPublicCandidateAnnouncement',announcementId:aid},15000,'profile').then(function(r){if(!r||!r.ok)return;var fresh=r.profile||r.announcement;if(fresh){try{box.innerHTML=candidateAnnouncementHtml(fresh,false)+candidatePremiumActionHtml_(aid);}catch(ignore){}}}).catch(function(){});return;}
+  box.innerHTML='<p class="muted">Открываем объявление...</p>';
+  apiPost({action:'getPublicCandidateAnnouncement',announcementId:aid},15000,'profile').then(function(r){if(!r||!r.ok)throw new Error(r&&r.error||'Объявление не найдено');var fresh=r.profile||r.announcement;if(!fresh)throw new Error('Данные объявления не получены');box.innerHTML=candidateAnnouncementHtml(fresh,false)+candidatePremiumActionHtml_(aid);}).catch(function(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';});
+}
+function openSearchVacancy(id){
+  window.lastDetailContext='search';
+  var aid=decodeURIComponent(id),cached=(window.searchResultCache&&window.searchResultCache.vacancies&&window.searchResultCache.vacancies[String(aid)])||null;
+  document.getElementById('searchPanel').classList.add('hidden');document.getElementById('detailPanel').classList.remove('hidden');
+  var box=document.getElementById('detailContent');
+  if(cached){try{box.innerHTML=detailHtml('vacancy',cached)+vacancyPremiumActionHtml_(aid);}catch(e){box.innerHTML='<p class="error">❌ Не удалось открыть вакансию: '+esc(e.message)+'</p>';return;}
+    apiPost({action:'getPublicVacancyAnnouncement',vacancyId:aid},15000,'general').then(function(r){if(!r||!r.ok)return;var fresh=r.vacancy;if(fresh){try{box.innerHTML=detailHtml('vacancy',fresh)+vacancyPremiumActionHtml_(aid);}catch(ignore){}}}).catch(function(){});return;}
+  box.innerHTML='<p class="muted">Открываем вакансию...</p>';
+  apiPost({action:'getPublicVacancyAnnouncement',vacancyId:aid},15000,'general').then(function(r){if(!r||!r.ok)throw new Error(r&&r.error||'Вакансия не найдена');if(!r.vacancy)throw new Error('Данные вакансии не получены');box.innerHTML=detailHtml('vacancy',r.vacancy)+vacancyPremiumActionHtml_(aid);}).catch(function(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';});
+}
 
 function renderResults(target,a){
   window.searchResultCache=window.searchResultCache||{};var ck=target==='candidates'?'candidates':target==='vacancies'?'vacancies':target==='brigades'?'brigades':'brigadeRequests';window.searchResultCache[ck]={};a.forEach(function(x){var k=target==='candidates'?(x.announcement_id||x.profile_id):target==='vacancies'?x.id:target==='brigades'?x.brigade_id:x.brigade_request_id;if(k)window.searchResultCache[ck][String(k)]=x;});
   let box=document.getElementById('results');
   if(!a.length){box.innerHTML='<p class="muted">Ничего не найдено. Попробуйте выбрать только категорию или город, либо убрать один из параметров.</p>';return;}
   box.innerHTML='<div class="divider"></div><b>Найдено: '+a.length+'</b>'+a.map(x=>{
-    if(target==='candidates')return '<div class="result-card"><div class="result-title">👤 '+esc(x.title||x.profession||'Соискатель')+'</div>'+line('Профессия',x.profession)+line('Город',x.city)+line('Опыт',x.experience)+'<button class="result-btn" onclick="window.lastDetailContext=\'search\';openPublicCandidateAnnouncement(\''+encodeURIComponent(x.announcement_id||x.profile_id)+'\',window.searchResultCache?.candidates?.[String(x.announcement_id||x.profile_id)])">👀 Посмотреть бесплатно</button></div>';
+    if(target==='candidates')return '<div class="result-card"><div class="result-title">👤 '+esc(x.title||x.profession||'Соискатель')+'</div>'+line('Профессия',x.profession)+line('Город',x.city)+line('Опыт',x.experience)+'<button type="button" class="result-btn" onclick="openSearchCandidate(\''+encodeURIComponent(x.announcement_id||x.profile_id)+'\')">👀 Посмотреть бесплатно</button></div>';
     if(target==='brigades')return '<div class="result-card"><div class="result-title">👷 '+esc(x.name||'Бригада')+'</div>'+line('Категория',x.category)+line('Специализация',x.specialization)+line('Виды работ',x.professions)+line('Город',x.city)+line('Людей',x.brigadeSize)+'<button class="result-btn" onclick="window.lastDetailContext=\'search\';openDetail(\'brigade\',\''+encodeURIComponent(x.brigade_id)+'\')">👀 Посмотреть профиль</button></div>';if(target==='brigadeRequests')return '<div class="result-card"><div class="result-title">👷 '+esc(x.profession||'Работа для бригады')+'</div>'+line('Категория',x.category)+line('Город',x.city)+line('Людей',x.brigadeSize)+line('Зарплата',(x.salaryFrom?'от '+x.salaryFrom+' ':'')+(x.salaryTo?'до '+x.salaryTo+' ':'')+(x.salaryUnit||''))+'<button class="result-btn" onclick="window.lastDetailContext=\'search\';openDetail(\'request\',\''+encodeURIComponent(x.brigade_request_id)+'\',window.searchResultCache?.brigadeRequests?.[String(x.brigade_request_id)])">👀 Подробнее</button></div>';
     return '<div class="result-card"><div class="result-title">💼 '+esc(x.title||x.profession||'Вакансия')+'</div>'+line('Профессия',x.profession)+line('Категория',x.category)+line('Город',x.city)+line('Зарплата',(x.salaryFrom?'от '+x.salaryFrom+' ':'')+(x.salaryTo?'до '+x.salaryTo+' ':'')+(x.salaryUnit||''))+'<button class="result-btn" onclick="window.lastDetailContext=\'search\';openDetail(\'vacancy\',\''+encodeURIComponent(x.id)+'\',window.searchResultCache?.vacancies?.[String(x.id)])">👀 Подробнее</button></div>';
   }).join('');

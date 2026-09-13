@@ -195,22 +195,73 @@ else {html=smartTitleBlock('🤝 Что за работа / объект','Чт�
 html+='<div id="candidatePrefillStatus" class="hint" style="margin:8px 0"></div><div id="livePreview" class="live-preview"></div><button type="button" id="submitButton" class="button">📤 Отправить на модерацию</button>';let target=document.getElementById(targetId)||document.getElementById('formArea');target.innerHTML=html;if(targetId==='formArea'){window.currentEditEntityId='';resetFreshPublishForm_(target);}activeSubmissionId=''; bindForm(type,targetId);bindLanguageControls_(target);if(type==='Ищу работу'&&targetId==='formArea'){const cachedProfile=getCachedCandidateProfile_();if(cachedProfile){applyCachedCandidatePrefill_(target,cachedProfile);}else{prefillCandidateAnnouncementFromProfile_();}}else{updateLivePreview(type);}}
 
 let currentType='Предлагаю работу'; let activeSubmissionId=''; let myProfilesPromise=null; window.myProfilesCache=null; window.currentCandidateProfile=null;
+function normalizeClientCandidateProfile_(p){
+  if(!p)return null;
+  const q={
+    profile_id:p.profile_id||p['profile_id']||'',
+    user_id:p.user_id||p['user_id']||'',
+    name:p.name||p['Имя']||'',
+    education:p.education||p['Образование']||'',
+    professionalSkills:p.professionalSkills||p['Профессии и навыки']||'',
+    languages:p.languages||p['Языки']||'',
+    languageLevel:p.languageLevel||p['Уровень языка']||'',
+    documents:p.documents||p['Документы']||'',
+    drivingLicenses:p.drivingLicenses||p['Водительские права']||'',
+    licenseCategories:p.licenseCategories||p['Категории прав']||'',
+    automobile:p.automobile||p['Автомобиль']||'',
+    photo:p.photo||p['Фото']||'',
+    resume:p.resume||p['Файл резюме']||'',
+    contact:p.contact||p['Контакт']||'',
+    telegram:p.telegram||p['Telegram']||'',
+    contactAvailable:p.contactAvailable!==undefined?p.contactAvailable:true
+  };
+  return (q.name||q.user_id||q.profile_id||q.languages||q.contact||q.photo||q.resume)?q:null;
+}
 function getCachedCandidateProfile_(){
-  if(window.currentCandidateProfile)return window.currentCandidateProfile;
-  const uid=String(tg?.initDataUnsafe?.user?.id||''); if(!uid)return null;
-  try{const raw=localStorage.getItem('robota_czechia_my_candidate_profile_'+uid);if(raw){const p=JSON.parse(raw);if(p){window.currentCandidateProfile=p;return p;}}}catch(e){}
-  if(window.myProfilesCache&&Array.isArray(window.myProfilesCache.candidates)&&window.myProfilesCache.candidates[0]){window.currentCandidateProfile=window.myProfilesCache.candidates[0];return window.currentCandidateProfile;}
+  const uid=String(tg?.initDataUnsafe?.user?.id||'');
+  if(window.currentCandidateProfile){
+    const p=normalizeClientCandidateProfile_(window.currentCandidateProfile);
+    if(p){window.currentCandidateProfile=p;return p;}
+  }
+  if(!uid)return null;
+  try{
+    const raw=localStorage.getItem('robota_czechia_my_candidate_profile_'+uid);
+    if(raw){
+      const p=normalizeClientCandidateProfile_(JSON.parse(raw));
+      if(p){
+        window.currentCandidateProfile=p;
+        try{localStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(p));}catch(e){}
+        return p;
+      }
+    }
+  }catch(e){}
+  if(window.myProfilesCache&&Array.isArray(window.myProfilesCache.candidates)&&window.myProfilesCache.candidates[0]){
+    const p=normalizeClientCandidateProfile_(window.myProfilesCache.candidates[0]);
+    if(p){window.currentCandidateProfile=p;return p;}
+  }
   return null;
 }
+let candidatePrefillPromise=null;
 function prefetchMyProfiles(){
   const uid=String(clientUser().id||''); if(!uid)return null;
   const cached=getCachedCandidateProfile_();
-  if(cached&&!myProfilesPromise)return Promise.resolve({ok:true,candidates:[cached],prefill:true});
-  if(!myProfilesPromise)myProfilesPromise=apiPost({action:'getCandidatePrefill',userId:uid},7000,'profile').then(r=>{
-    if(r&&r.ok&&r.profile){window.currentCandidateProfile=r.profile;window.myProfilesCache=Object.assign({},window.myProfilesCache||{},{candidates:[r.profile]});try{localStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(r.profile));}catch(e){try{sessionStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(r.profile));}catch(ignore){}}}
+  if(cached)return Promise.resolve({ok:true,profile:cached,candidates:[cached],prefill:true});
+  if(candidatePrefillPromise)return candidatePrefillPromise;
+  candidatePrefillPromise=apiPost({action:'getCandidatePrefill',userId:uid},45000,'profile').then(r=>{
+    if(r&&r.ok&&r.profile){
+      const p=normalizeClientCandidateProfile_(r.profile);
+      if(p){
+        window.currentCandidateProfile=p;
+        window.myProfilesCache=Object.assign({},window.myProfilesCache||{},{candidates:[p]});
+        try{localStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(p));}catch(e){
+          try{sessionStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(p));}catch(ignore){}
+        }
+        r.profile=p;
+      }
+    }
     return r;
-  }).catch(e=>{myProfilesPromise=null;throw e;});
-  return myProfilesPromise;
+  }).catch(e=>{candidatePrefillPromise=null;throw e;});
+  return candidatePrefillPromise;
 }
 function applyCachedCandidatePrefill_(root,p){
   if(!root||!p)return false;
@@ -564,7 +615,7 @@ function bindProfileFileStatus_(){
   if(pf)pf.onchange=()=>{const st=root.querySelector('#photoFileHint');if(st&&pf.files[0])st.textContent='📎 '+pf.files[0].name;};
   if(rf)rf.onchange=()=>{const st=root.querySelector('#resumeName');if(st&&rf.files[0])st.textContent='📎 '+rf.files[0].name;};
 }
-async function saveCandidateProfileEdit(id){let root=activeFormRoot_(),msg=document.getElementById('editMessage'),btn=root.querySelector('#submitButton'),g=x=>root.querySelector('#'+CSS.escape(x))?.value?.trim()||'';if(btn&&btn.disabled)return;if(btn)btn.disabled=true;msg.innerHTML='<p class="muted">Сохраняем профиль...</p>';try{let d={action:'updateCandidateProfile',profileId:id,userId:clientUser().id,candidateName:g('candidateName'),education:g('education'),professionalSkills:g('professionalSkills'),languages:languageData(root),documents:checked('doc',root),drivingLicenses:g('drivingLicenses'),licenseCategories:checked('license',root),automobile:g('automobile'),contact:g('contact'),telegram:tg?.initDataUnsafe?.user?.username||''};let r=await apiPost(d,45000,'profile');if(!r.ok)throw new Error(r.error||'Ошибка сохранения');let uploads=[];let pf=root.querySelector('#photoFile')?.files?.[0],rf=root.querySelector('#resumeFile')?.files?.[0];if(pf)uploads.push(uploadSelectedFile('candidatePhoto',id,pf));if(rf)uploads.push(uploadSelectedFile('candidateResume',id,rf));if(uploads.length)await Promise.all(uploads);const savedProfile=r.profile||null;if(savedProfile){const cachedProfile=Object.assign({},savedProfile,{announcements:(window.myProfilesCache?.candidates?.[0]?.announcements)||[]});window.myProfilesCache=Object.assign({},window.myProfilesCache||{}, {candidates:[cachedProfile]});window.currentCandidateProfile=cachedProfile;try{localStorage.setItem('robota_czechia_my_candidate_profile_'+String(clientUser().id),JSON.stringify(cachedProfile));}catch(e){}}myProfilesPromise=Promise.resolve(window.myProfilesCache||null);document.getElementById('editMessage').innerHTML='<p class="success">✅ Профиль сохранён.</p>';setTimeout(()=>setNav('profile'),500);}catch(e){if(btn)btn.disabled=false;msg.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}}
+async function saveCandidateProfileEdit(id){let root=activeFormRoot_(),msg=document.getElementById('editMessage'),btn=root.querySelector('#submitButton'),g=x=>root.querySelector('#'+CSS.escape(x))?.value?.trim()||'';if(btn&&btn.disabled)return;if(btn)btn.disabled=true;msg.innerHTML='<p class="muted">Сохраняем профиль...</p>';try{let d={action:'updateCandidateProfile',profileId:id,userId:clientUser().id,candidateName:g('candidateName'),education:g('education'),professionalSkills:g('professionalSkills'),languages:languageData(root),documents:checked('doc',root),drivingLicenses:g('drivingLicenses'),licenseCategories:checked('license',root),automobile:g('automobile'),contact:g('contact'),telegram:tg?.initDataUnsafe?.user?.username||''};let r=await apiPost(d,45000,'profile');if(!r.ok)throw new Error(r.error||'Ошибка сохранения');let uploads=[];let pf=root.querySelector('#photoFile')?.files?.[0],rf=root.querySelector('#resumeFile')?.files?.[0];if(pf)uploads.push(uploadSelectedFile('candidatePhoto',id,pf));if(rf)uploads.push(uploadSelectedFile('candidateResume',id,rf));if(uploads.length)await Promise.all(uploads);const savedProfile=normalizeClientCandidateProfile_(r.profile||null);if(savedProfile){const cachedProfile=Object.assign({},savedProfile,{announcements:(window.myProfilesCache?.candidates?.[0]?.announcements)||[]});window.myProfilesCache=Object.assign({},window.myProfilesCache||{}, {candidates:[cachedProfile]});window.currentCandidateProfile=cachedProfile;try{localStorage.setItem('robota_czechia_my_candidate_profile_'+String(clientUser().id),JSON.stringify(cachedProfile));}catch(e){}}candidatePrefillPromise=Promise.resolve({ok:true,profile:window.currentCandidateProfile,candidates:[window.currentCandidateProfile]});myProfilesPromise=Promise.resolve(window.myProfilesCache||null);document.getElementById('editMessage').innerHTML='<p class="success">✅ Профиль сохранён.</p>';setTimeout(()=>setNav('profile'),500);}catch(e){if(btn)btn.disabled=false;msg.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}}
 async function removeCandidateProfileFileUI(id,kind){if(!confirm(kind==='candidateResume'?'Открепить резюме?':'Удалить фото?'))return;try{let r=await apiPost({action:'removeCandidateProfileFile',profileId:decodeURIComponent(id),userId:clientUser().id,fileKind:kind},30000,'profile');if(!r.ok)throw new Error(r.error||'Не удалось изменить профиль');editEntity('candidate',id);}catch(e){alert('❌ '+e.message);}}
 async function editEntity(type,id){if(!window.editReturnContext){window.editReturnContext=(type==='vacancy'&&window.currentEmployerProfileId)?{kind:'employer',id:String(window.currentEmployerProfileId)}:{kind:'profile',id:''};}document.getElementById('formArea').innerHTML='';let panel=document.getElementById('editPanel'),area=document.getElementById('editArea'),msg=document.getElementById('editMessage');document.getElementById('profilePanel').classList.add('hidden');document.getElementById('detailPanel').classList.add('hidden');panel.classList.remove('hidden');area.innerHTML='<p class="muted">Загрузка...</p>';msg.innerHTML='';let action=type==='candidate'?'getCandidateProfile':type==='candidateAnnouncement'?'getCandidateAnnouncement':type==='vacancy'?'getVacancy':type==='brigade'?'getBrigade':type==='request'?'getBrigadeRequest':'getMyEmployer';let key=type==='candidate'?'profileId':type==='candidateAnnouncement'?'announcementId':type==='vacancy'?'vacancyId':type==='brigade'?'brigadeId':type==='request'?'brigadeRequestId':'employerId';try{let r=await apiPost({action,[key]:decodeURIComponent(id),userId:clientUser().id});if(!r.ok)throw new Error(r.error||'Не найдено');let o=r.profile||r.announcement||r.vacancy||r.brigade||r.request;window.currentEditEntityId=decodeURIComponent(id);document.getElementById('editTitle').textContent='✏️ '+(type==='candidate'?'Профиль соискателя':type==='candidateAnnouncement'?'Объявление соискателя':type==='employer'?'Профиль работодателя':type==='vacancy'?'Вакансия':type==='brigade'?'Профиль бригады':'Запрос «Ищу бригаду»');if(type==='employer'){setEditReturnContext('employer',o.employer_id);renderEmployerEdit(o);return;}if(type==='candidate'){renderCandidateProfileEdit(o);return;}if(type==='candidateAnnouncement'){let formType='Ищу работу';renderForm(formType,'editArea');let merged=Object.assign({},o,{name:o['Имя']||window.currentCandidateProfile?.name,title:o['Желаемая должность'],profession:o['Профессия'],category:o['Категория'],city:o['Город'],salaryFrom:o['Желаемая зарплата от'],salaryTo:o['Желаемая зарплата до'],salaryUnit:o['Единица оплаты'],workType:o['Тип работы'],employmentType:o['Тип занятости'],schedule:o['График'],housing:o['Жильё'],languages:o['Языки'],languageLevel:o['Уровень языка'],documents:o['Документы'],experience:o['Опыт'],drivingLicenses:o['Водительские права'],licenseCategories:o['Категории прав'],automobile:o['Автомобиль'],qualification:o['Квалификация'],skills:o['Навыки'],readyDate:o['Дата готовности к работе'],description:o['О себе'],contact:o['Контакт']});fillEntityForm(formType,merged);let b=document.getElementById('submitButton');b.textContent='💾 Сохранить изменения';b.onclick=()=>saveEditedEntity('candidateAnnouncement',decodeURIComponent(id),formType);return;}let formType=type==='candidate'?'Ищу работу':type==='vacancy'?'Предлагаю работу':type==='brigade'?'Бригада ищет работу':'Ищу бригаду';renderForm(formType,'editArea');fillEntityForm(formType,o);let b=document.getElementById('submitButton');b.textContent='💾 Сохранить изменения';b.dataset.entityId=decodeURIComponent(id);b.onclick=()=>saveEditedEntity(type,decodeURIComponent(id),formType);if(type==='vacancy'&&String(o['Статус']||'')==='Черновик'){let db=document.createElement('button');db.id='draftSubmitButton';db.className='result-btn';db.style.marginTop='8px';db.textContent='📤 Отправить черновик на модерацию';b.parentNode.appendChild(db);db.onclick=()=>submitCurrentDraft(decodeURIComponent(id));} }catch(e){area.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}}
 async function submitCurrentDraft(id){

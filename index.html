@@ -180,45 +180,11 @@ function resetFreshPublishForm_(root){
   var levels=root.querySelector('#languageLevels');if(levels){levels.classList.add('hidden');levels.innerHTML='';}
 }
 async function prefillCandidateAnnouncementFromProfile_(){
-  const root=document.getElementById('formArea');
-  if(!root||currentType!=='Ищу работу'||window.currentEditEntityId)return;
-  const uid=String(clientUser().id||'');
-  const apply=(p)=>{
-    if(!p||currentType!=='Ищу работу'||window.currentEditEntityId)return false;
-    const n=root.querySelector('#candidateName');if(n)n.value=String(p.name||'');
-    setLanguageChecks(p.languages||'',root);
-    setChecks('doc',p.documents||'',root);
-    setSelect('drivingLicenses',p.drivingLicenses||'',root);
-    setChecks('license',p.licenseCategories||'',root);
-    setSelect('automobile',p.automobile||'',root);
-    const c=root.querySelector('#contact');if(c)c.value=String(p.contact||'');
-    const ph=root.querySelector('#photoFileHint');if(ph&&p.photo)ph.innerHTML='📷 Фото прикреплено в постоянном профиле — будет использовано автоматически. <span class="hint">Выберите новый файл, чтобы заменить его.</span>';
-    const rn=root.querySelector('#resumeName');if(rn&&p.resume)rn.innerHTML='📄 Резюме прикреплено в постоянном профиле — будет использовано автоматически. <span class="hint">Выберите новый файл, чтобы заменить его.</span>';
-    updateLivePreview('Ищу работу');
-    return true;
-  };
+  const root=document.getElementById('formArea');if(!root||currentType!=='Ищу работу'||window.currentEditEntityId)return;
   const cached=getCachedCandidateProfile_();
-  if(cached){
-    apply(cached);
-    // Refresh the cache silently; never make the user wait and never repaint the active form.
-    try{
-      const r=myProfilesPromise?await myProfilesPromise:await apiPost({action:'getMyProfiles',userId:uid},15000,'profile');
-      if(r&&r.ok&&Array.isArray(r.candidates)&&r.candidates[0]){
-        const fresh=r.candidates[0];window.myProfilesCache=r;window.currentCandidateProfile=fresh;
-        try{localStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(fresh));}catch(e){}
-      }
-    }catch(e){console.warn('Фоновое обновление профиля не выполнено:',e);}
-    return;
-  }
+  if(cached){applyCachedCandidatePrefill_(root,cached);return;}
   const loading=root.querySelector('#candidatePrefillStatus');if(loading)loading.textContent='⏳ Загружаем данные профиля…';
-  try{
-    const r=myProfilesPromise?await myProfilesPromise:await apiPost({action:'getMyProfiles',userId:uid},15000,'profile');
-    if(r&&r.ok&&Array.isArray(r.candidates)&&r.candidates[0]){
-      const fresh=r.candidates[0];window.myProfilesCache=r;window.currentCandidateProfile=fresh;
-      try{localStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(fresh));}catch(e){}
-      if(currentType==='Ищу работу'&&!window.currentEditEntityId)apply(fresh);
-    }
-  }catch(e){console.warn('Не удалось автоматически заполнить профиль соискателя:',e);}
+  try{const r=await prefetchMyProfiles();if(r&&r.ok&&r.profile&&currentType==='Ищу работу'&&!window.currentEditEntityId)applyCachedCandidatePrefill_(root,r.profile);}catch(e){console.warn('Не удалось автоматически заполнить профиль соискателя:',e);}
   const status=root.querySelector('#candidatePrefillStatus');if(status)status.remove();
 }
 
@@ -226,7 +192,7 @@ function renderForm(type,targetId='formArea'){let html='';if(type==='Предл�
 else if(type==='Ищу работу'){html=input('candidateName','👤 Имя',true)+smartTitleBlock('👤 Желаемая должность','Желаемая должность')+catSelect()+profBlock('👷 Профессия',true)+field('📍 Город','city','<select id="city">'+opts(cities,'Выберите город')+'</select>',true)+salaryBlock('Желаемая зарплата')+commonWork()+housingForCandidate()+languagesBlock()+docsBlock(true)+field('💼 Опыт работы','experience','<select id="experience">'+opts(['Без опыта','До 1 года','1–3 года','3–5 лет','5–10 лет','Более 10 лет'],'Выберите')+'</select>')+field('🚗 Водительские права','drivingLicenses','<select id="drivingLicenses">'+opts(['Есть','Нет'],'Выберите')+'</select>')+multiBlock('🔢 Категории прав','license',licenseCategories)+field('🚙 Автомобиль','automobile','<select id="automobile">'+opts(['Есть','Нет'],'Выберите')+'</select>')+textarea('qualification','🎓 Квалификация','Ваша квалификация, сертификаты и допуски')+textarea('skills','🛠 Навыки','Ваши профессиональные навыки')+field('📅 Готовность к работе','readyDate','<div class="date-wrap"><input id="readyDate" type="date" lang="ru-RU"><button type="button" class="date-btn" id="readyDateBtn">📅</button></div>')+textarea('description','👤 О себе','Расскажите о себе, опыте и какую работу ищете',true)+filesBlock()+contactBlock();}
 else if(type==='Бригада ищет работу'){html=smartTitleBlock('👷 Название бригады / специальность','Например: бетон, монолитчики, электрика')+field('👥 Количество человек','brigadeSize','<input id="brigadeSize" type="number" min="1" max="100" placeholder="Например: 6">',true)+catSelect()+brigadeMultiBlock('🏗 Специализация','specialization',brigadeSpecializations(''))+brigadeMultiBlock('🛠 Виды работ','workTypes',brigadeWorkTypes(''))+field('📍 Город','city','<select id="city">'+opts(cities,'Выберите город')+'</select>',true)+field('🗺 Мобильность','mobility','<select id="mobility">'+opts(['Только свой город','По своему региону','По всей Чехии','Готовы к командировкам по ЕС'],'Выберите')+'</select>')+cooperationBlock()+ownEquipmentBlock()+languagesBlock()+field('💼 Опыт команды','experience','<select id="experience">'+opts(['До 1 года','1–3 года','3–5 лет','5–10 лет','Более 10 лет'],'Выберите')+'</select>')+textarea('qualification','🎓 Квалификация команды','Квалификация, допуски и сертификаты')+textarea('skills','🛠 Навыки','Основные профессиональные навыки')+field('📅 Готовность к работе','readyDate','<div class="date-wrap"><input id="readyDate" type="date" lang="ru-RU"><button type="button" class="date-btn" id="readyDateBtn">📅</button></div>')+textarea('description','👷 О бригаде','Расскажите о бригаде, опыте и условиях',true)+filesBlock()+contactBlock();}
 else {html=smartTitleBlock('🤝 Что за работа / объект','Что за работа / объект')+catSelect()+brigadeMultiBlock('🏗 Специализация','specialization',brigadeSpecializations(''))+brigadeMultiBlock('🛠 Какие виды работ нужны','workTypes',brigadeWorkTypes(''))+field('📍 Город','city','<select id="city">'+opts(cities,'Выберите город')+'</select>',true)+field('👥 Количество человек','brigadeSize','<input id="brigadeSize" type="number" min="1" max="100" placeholder="Например: 4">',true)+salaryBlock('Оплата')+cooperationBlock()+languagesBlock()+textarea('requirements','📋 Требования','Что должна уметь / иметь бригада')+textarea('qualification','🎓 Квалификация','Нужная квалификация')+textarea('skills','🛠 Навыки','Какие навыки нужны')+field('📅 Дата начала','readyDate','<div class="date-wrap"><input id="readyDate" type="date" lang="ru-RU"><button type="button" class="date-btn" id="readyDateBtn">📅</button></div>')+textarea('description','📝 Описание работы','Опишите объект, объём и условия для бригады',true)+contactBlock();}
-html+='<div id="candidatePrefillStatus" class="hint" style="margin:8px 0"></div><div id="livePreview" class="live-preview"></div><button type="button" id="submitButton" class="button">📤 Отправить на модерацию</button>';let target=document.getElementById(targetId)||document.getElementById('formArea');target.innerHTML=html;if(targetId==='formArea'){window.currentEditEntityId='';resetFreshPublishForm_(target);}activeSubmissionId=''; bindForm(type,targetId);bindLanguageControls_(target);if(type==='Ищу работу'&&targetId==='formArea'){const cachedProfile=getCachedCandidateProfile_();if(cachedProfile){const n=target.querySelector('#candidateName');if(n)n.value=String(cachedProfile.name||'');setLanguageChecks(cachedProfile.languages||'',target);setChecks('doc',cachedProfile.documents||'',target);setSelect('drivingLicenses',cachedProfile.drivingLicenses||'',target);setChecks('license',cachedProfile.licenseCategories||'',target);setSelect('automobile',cachedProfile.automobile||'',target);const c=target.querySelector('#contact');if(c)c.value=String(cachedProfile.contact||'');const ph=target.querySelector('#photoFileHint');if(ph&&cachedProfile.photo)ph.innerHTML='📷 Фото прикреплено в постоянном профиле — будет использовано автоматически. <span class="hint">Выберите новый файл, чтобы заменить его.</span>';const rn=target.querySelector('#resumeName');if(rn&&cachedProfile.resume)rn.innerHTML='📄 Резюме прикреплено в постоянном профиле — будет использовано автоматически. <span class="hint">Выберите новый файл, чтобы заменить его.</span>';updateLivePreview(type);setTimeout(()=>{if(currentType==='Ищу работу'&&!window.currentEditEntityId)prefillCandidateAnnouncementFromProfile_();},0);}else{prefillCandidateAnnouncementFromProfile_();}}else{updateLivePreview(type);}}
+html+='<div id="candidatePrefillStatus" class="hint" style="margin:8px 0"></div><div id="livePreview" class="live-preview"></div><button type="button" id="submitButton" class="button">📤 Отправить на модерацию</button>';let target=document.getElementById(targetId)||document.getElementById('formArea');target.innerHTML=html;if(targetId==='formArea'){window.currentEditEntityId='';resetFreshPublishForm_(target);}activeSubmissionId=''; bindForm(type,targetId);bindLanguageControls_(target);if(type==='Ищу работу'&&targetId==='formArea'){const cachedProfile=getCachedCandidateProfile_();if(cachedProfile){applyCachedCandidatePrefill_(target,cachedProfile);}else{prefillCandidateAnnouncementFromProfile_();}}else{updateLivePreview(type);}}
 
 let currentType='Предлагаю работу'; let activeSubmissionId=''; let myProfilesPromise=null; window.myProfilesCache=null; window.currentCandidateProfile=null;
 function getCachedCandidateProfile_(){
@@ -237,11 +203,23 @@ function getCachedCandidateProfile_(){
   return null;
 }
 function prefetchMyProfiles(){
-  const uid=String(tg?.initDataUnsafe?.user?.id||''); if(!uid)return null;
+  const uid=String(clientUser().id||''); if(!uid)return null;
   const cached=getCachedCandidateProfile_();
-  if(cached&&!myProfilesPromise)return Promise.resolve({ok:true,candidates:[cached]});
-  if(!myProfilesPromise)myProfilesPromise=apiPost({action:'getMyProfiles',userId:uid},15000,'profile').then(r=>{if(r&&r.ok){window.myProfilesCache=r;const p=r.candidates&&r.candidates[0];if(p){window.currentCandidateProfile=p;try{localStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(p));}catch(e){}}}return r;}).catch(e=>{myProfilesPromise=null;throw e;});
+  if(cached&&!myProfilesPromise)return Promise.resolve({ok:true,candidates:[cached],prefill:true});
+  if(!myProfilesPromise)myProfilesPromise=apiPost({action:'getCandidatePrefill',userId:uid},7000,'profile').then(r=>{
+    if(r&&r.ok&&r.profile){window.currentCandidateProfile=r.profile;window.myProfilesCache=Object.assign({},window.myProfilesCache||{},{candidates:[r.profile]});try{localStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(r.profile));}catch(e){try{sessionStorage.setItem('robota_czechia_my_candidate_profile_'+uid,JSON.stringify(r.profile));}catch(ignore){}}}
+    return r;
+  }).catch(e=>{myProfilesPromise=null;throw e;});
   return myProfilesPromise;
+}
+function applyCachedCandidatePrefill_(root,p){
+  if(!root||!p)return false;
+  const n=root.querySelector('#candidateName');if(n)n.value=String(p.name||'');
+  setLanguageChecks(p.languages||'',root);setChecks('doc',p.documents||'',root);setSelect('drivingLicenses',p.drivingLicenses||'',root);setChecks('license',p.licenseCategories||'',root);setSelect('automobile',p.automobile||'',root);
+  const c=root.querySelector('#contact');if(c)c.value=String(p.contact||'');
+  const ph=root.querySelector('#photoFileHint');if(ph&&p.photo)ph.innerHTML='📷 Фото прикреплено в постоянном профиле — будет использовано автоматически. <span class="hint">Выберите новый файл, чтобы заменить его.</span>';
+  const rn=root.querySelector('#resumeName');if(rn&&p.resume)rn.innerHTML='📄 Резюме прикреплено в постоянном профиле — будет использовано автоматически. <span class="hint">Выберите новый файл, чтобы заменить его.</span>';
+  updateLivePreview('Ищу работу');return true;
 }
 function activeFormRoot_(){const edit=document.getElementById('editPanel'),ea=document.getElementById('editArea');if(edit&&!edit.classList.contains('hidden')&&ea)return ea;return document.getElementById('formArea')||document;}
 function formEl_(id){const root=activeFormRoot_();return root.querySelector('#'+CSS.escape(id));}

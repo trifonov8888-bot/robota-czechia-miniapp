@@ -484,23 +484,24 @@ async function runSearch(){
 function line(l,v){return v?'<div class="line"><span class="muted">'+esc(l)+':</span> '+esc(v)+'</div>' : '';}
 function openSearchCandidate(id){
   window.lastDetailContext='search';
-  var aid=decodeURIComponent(id), cached=(window.searchResultCache&&window.searchResultCache.candidates&&window.searchResultCache.candidates[String(aid)])||null;
-  document.getElementById('searchPanel').classList.add('hidden');document.getElementById('detailPanel').classList.remove('hidden');
+  var aid=decodeURIComponent(id),cached=window.searchResultCache&&window.searchResultCache.candidates&&window.searchResultCache.candidates[String(aid)];
+  document.getElementById('searchPanel').classList.add('hidden');
+  document.getElementById('detailPanel').classList.remove('hidden');
   var box=document.getElementById('detailContent');
-  if(cached){try{box.innerHTML=candidateAnnouncementHtml(cached,false)+candidatePremiumActionHtml_(aid);}catch(e){box.innerHTML='<p class="error">❌ Не удалось открыть объявление: '+esc(e.message)+'</p>';return;}
-    apiPost({action:'getPublicCandidateAnnouncement',announcementId:aid},15000,'profile').then(function(r){if(!r||!r.ok)return;var fresh=r.profile||r.announcement;if(fresh){try{box.innerHTML=candidateAnnouncementHtml(fresh,false)+candidatePremiumActionHtml_(aid);}catch(ignore){}}}).catch(function(){});return;}
-  box.innerHTML='<p class="muted">Открываем объявление...</p>';
-  apiPost({action:'getPublicCandidateAnnouncement',announcementId:aid},15000,'profile').then(function(r){if(!r||!r.ok)throw new Error(r&&r.error||'Объявление не найдено');var fresh=r.profile||r.announcement;if(!fresh)throw new Error('Данные объявления не получены');box.innerHTML=candidateAnnouncementHtml(fresh,false)+candidatePremiumActionHtml_(aid);}).catch(function(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';});
+  if(!cached){box.innerHTML='<p class="error">❌ Объявление не найдено в результатах поиска.</p>';return;}
+  try{
+    box.innerHTML=candidateAnnouncementHtml(Object.assign({workType:'',employmentType:'',drivingLicenses:'',licenseCategories:'',automobile:'',qualification:'',skills:'',readyDate:'',about:'',languages:'',documents:'',experience:'',housing:'',schedule:'',salaryFrom:'',salaryTo:'',salaryUnit:''},cached),false)+candidatePremiumActionHtml_(aid);
+  }catch(e){box.innerHTML='<p class="error">❌ Не удалось открыть объявление: '+esc(e.message)+'</p>';}
 }
 function openSearchVacancy(id){
   window.lastDetailContext='search';
-  var aid=decodeURIComponent(id),cached=(window.searchResultCache&&window.searchResultCache.vacancies&&window.searchResultCache.vacancies[String(aid)])||null;
-  document.getElementById('searchPanel').classList.add('hidden');document.getElementById('detailPanel').classList.remove('hidden');
+  var aid=decodeURIComponent(id),cached=window.searchResultCache&&window.searchResultCache.vacancies&&window.searchResultCache.vacancies[String(aid)];
+  document.getElementById('searchPanel').classList.add('hidden');
+  document.getElementById('detailPanel').classList.remove('hidden');
   var box=document.getElementById('detailContent');
-  if(cached){try{box.innerHTML=detailHtml('vacancy',cached)+vacancyPremiumActionHtml_(aid);}catch(e){box.innerHTML='<p class="error">❌ Не удалось открыть вакансию: '+esc(e.message)+'</p>';return;}
-    apiPost({action:'getPublicVacancyAnnouncement',vacancyId:aid},15000,'general').then(function(r){if(!r||!r.ok)return;var fresh=r.vacancy;if(fresh){try{box.innerHTML=detailHtml('vacancy',fresh)+vacancyPremiumActionHtml_(aid);}catch(ignore){}}}).catch(function(){});return;}
-  box.innerHTML='<p class="muted">Открываем вакансию...</p>';
-  apiPost({action:'getPublicVacancyAnnouncement',vacancyId:aid},15000,'general').then(function(r){if(!r||!r.ok)throw new Error(r&&r.error||'Вакансия не найдена');if(!r.vacancy)throw new Error('Данные вакансии не получены');box.innerHTML=detailHtml('vacancy',r.vacancy)+vacancyPremiumActionHtml_(aid);}).catch(function(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';});
+  if(!cached){box.innerHTML='<p class="error">❌ Вакансия не найдена в результатах поиска.</p>';return;}
+  try{box.innerHTML=detailHtml('vacancy',cached)+vacancyPremiumActionHtml_(aid);}
+  catch(e){box.innerHTML='<p class="error">❌ Не удалось открыть вакансию: '+esc(e.message)+'</p>';}
 }
 
 function renderResults(target,a){

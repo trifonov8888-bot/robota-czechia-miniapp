@@ -562,10 +562,20 @@ function searchFilters(){const q=document.getElementById('smartSearchInput')?.va
 async function runSearch(timeoutMs=12000){
   const action=currentSearchMode==='vacancies'?'searchVacancies':currentSearchMode==='candidates'?'searchCandidates':currentSearchMode==='brigadeRequests'?'searchBrigadeRequests':'searchBrigades';
   const filters=searchFilters(),cacheKey='robota_czechia_search_'+currentSearchMode+'_'+JSON.stringify(filters),box=document.getElementById('results');
-  try{var raw=localStorage.getItem(cacheKey);if(raw){var local=JSON.parse(raw);if(local&&Array.isArray(local.results)){renderResults(currentSearchMode,local.results);}}}catch(e){}
+  try{var raw=localStorage.getItem(cacheKey);if(raw){var local=JSON.parse(raw);if(local&&local.cross){renderCrossResults(local.cross);}else if(local&&Array.isArray(local.results)){renderResults(currentSearchMode,local.results);}}}catch(e){}
   if(box.innerHTML.trim()==='')box.innerHTML='<p class="muted">🔎 Ищем подходящие варианты...</p>';
-  try{let r=await apiPost({action,filters:filters},timeoutMs,'general');if(!r.ok)throw new Error(r.error||'Ошибка поиска');try{localStorage.setItem(cacheKey,JSON.stringify({results:r.results||[],ts:Date.now()}));}catch(e){}renderResults(currentSearchMode,r.results||[]);}
-  catch(e){if(box.innerHTML.indexOf('result-card')<0)box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}
+  try{
+    if(!window.similarSearchMode){
+      let r=await apiPost({action:'searchCrossMatches',filters:Object.assign({},filters,{mode:currentSearchMode})},timeoutMs,'general');
+      if(!r.ok)throw new Error(r.error||'Ошибка поиска');
+      try{localStorage.setItem(cacheKey,JSON.stringify({cross:r.results||{primary:[],secondary:[],secondaryType:''},ts:Date.now()}));}catch(e){}
+      renderCrossResults(r.results||{});
+    }else{
+      let r=await apiPost({action,filters:filters},timeoutMs,'general');if(!r.ok)throw new Error(r.error||'Ошибка поиска');
+      try{localStorage.setItem(cacheKey,JSON.stringify({results:r.results||[],ts:Date.now()}));}catch(e){}
+      renderResults(currentSearchMode,r.results||[]);
+    }
+  }catch(e){if(box.innerHTML.indexOf('result-card')<0)box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}
 }
 function line(l,v){return v?'<div class="line"><span class="muted">'+esc(l)+':</span> '+esc(v)+'</div>' : '';}
 function openSearchCandidate(id){
@@ -703,6 +713,26 @@ function placeSimilarRefineButton_(box,count){
   slot.classList.remove('hidden');slot.classList.add('visible');
   var countEl=document.getElementById('similarResultsCount');if(countEl)countEl.textContent='Найдено: '+count;
   ref.textContent=controls?.classList.contains('similar-collapsed')?'⚙️ Уточнить поиск':'⬆️ Скрыть поиск';
+}
+function resultCardsHtml_(target,a){
+  window.searchResultCache=window.searchResultCache||{};var ck=target==='candidates'?'candidates':target==='vacancies'?'vacancies':target==='brigades'?'brigades':'brigadeRequests';window.searchResultCache[ck]=window.searchResultCache[ck]||{};
+  a.forEach(function(x){var k=target==='candidates'?(x.announcement_id||x.profile_id):target==='vacancies'?x.id:target==='brigades'?x.brigade_id:x.brigade_request_id;if(k)window.searchResultCache[ck][String(k)]=x;});
+  return a.map(function(x){
+    if(target==='candidates')return '<div class="result-card"><div class="result-title">👤 '+esc(x.title||x.profession||'Соискатель')+'</div>'+line('Профессия',x.profession)+line('Город',x.city)+line('Опыт',x.experience)+'<button type="button" class="result-btn" onclick="openSearchCandidate(\''+encodeURIComponent(x.announcement_id||x.profile_id)+'\')">👀 Посмотреть бесплатно</button>'+favoriteButtonHtml_('candidate',x.announcement_id||x.profile_id,isFavorite_('candidate',x.announcement_id||x.profile_id))+'</div>';
+    if(target==='brigades')return '<div class="result-card"><div class="result-title">👷 '+esc(x.name||'Бригада')+'</div>'+line('Категория',x.category)+line('Специализация',x.specialization)+line('Виды работ',x.workTypes||x.professions)+line('Город',x.city)+line('Людей',x.brigadeSize)+'<button class="result-btn" onclick="window.lastDetailContext=\'search\';openDetail(\'brigade\',\''+encodeURIComponent(x.brigade_id)+'\')">👀 Посмотреть профиль</button>'+favoriteButtonHtml_('brigade',x.brigade_id,isFavorite_('brigade',x.brigade_id))+'</div>';
+    if(target==='brigadeRequests')return '<div class="result-card"><div class="result-title">🤝 '+esc(x.profession||'Работа для бригады')+'</div>'+line('Категория',x.category)+line('Специализация',x.specialization)+line('Виды работ',x.workTypes)+line('Город',x.city)+line('Людей',x.brigadeSize)+line('Зарплата',(x.salaryFrom?'от '+x.salaryFrom+' ':'')+(x.salaryTo?'до '+x.salaryTo+' ':'')+(x.salaryUnit||''))+'<button class="result-btn" onclick="window.lastDetailContext=\'search\';openDetail(\'request\',\''+encodeURIComponent(x.brigade_request_id)+'\',window.searchResultCache?.brigadeRequests?.[String(x.brigade_request_id)])">👀 Подробнее</button>'+favoriteButtonHtml_('request',x.brigade_request_id,isFavorite_('request',x.brigade_request_id))+'</div>';
+    return '<div class="result-card"><div class="result-title">💼 '+esc(x.title||x.profession||'Вакансия')+'</div>'+line('Профессия',x.profession)+line('Категория',x.category)+line('Город',x.city)+line('Зарплата',(x.salaryFrom?'от '+x.salaryFrom+' ':'')+(x.salaryTo?'до '+x.salaryTo+' ':'')+(x.salaryUnit||''))+'<button type="button" class="result-btn" onclick="openSearchVacancy(\''+encodeURIComponent(x.id)+'\')">👀 Подробнее</button>'+favoriteButtonHtml_('vacancy',x.id,isFavorite_('vacancy',x.id))+'</div>';
+  }).join('');
+}
+function renderCrossResults(c){
+  c=c||{primary:[],secondary:[],secondaryType:''};var box=document.getElementById('results');if(!box)return;
+  var primaryLabel=currentSearchMode==='candidates'?'👤 Соискатели':currentSearchMode==='brigades'?'👷 Бригады':currentSearchMode==='vacancies'?'💼 Вакансии':'🤝 Запросы на бригаду';
+  var secondaryLabel=c.secondaryType==='brigades'?'👷 Бригады, которые могут подойти':c.secondaryType==='candidates'?'👤 Работники, которые могут подойти':c.secondaryType==='vacancies'?'💼 Вакансии, которые могут подойти':'🤝 Запросы, которые могут подойти';
+  if(!c.primary.length&&!c.secondary.length){box.innerHTML='<p class="muted">Ничего не найдено. Попробуйте изменить запрос или убрать один из фильтров.</p>';placeSimilarRefineButton_(box,0);return;}
+  var html='';
+  if(c.primary.length)html+='<div class="similar-results-head"><strong>'+primaryLabel+' · '+c.primary.length+'</strong></div>'+resultCardsHtml_(currentSearchMode,c.primary);
+  if(c.secondary.length)html+='<div class="divider"></div><div class="similar-results-head"><strong>'+secondaryLabel+' · '+c.secondary.length+'</strong></div>'+resultCardsHtml_(c.secondaryType,c.secondary);
+  box.innerHTML=html;placeSimilarRefineButton_(box,c.primary.length+c.secondary.length);
 }
 function renderResults(target,a){
   if(!window.favoriteMap)loadFavorites_();

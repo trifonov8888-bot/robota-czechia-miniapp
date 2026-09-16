@@ -1,0 +1,58 @@
+name: Deploy Apps Script backend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps-script/**'
+      - '.github/workflows/deploy-apps-script.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-apps-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+        run: |
+          test -n "$CLASPRC_JSON" || { echo 'Missing GitHub Actions secret: CLASPRC_JSON'; exit 1; }
+          test -n "$APPS_SCRIPT_ID" || { echo 'Missing GitHub Actions secret: APPS_SCRIPT_ID'; exit 1; }
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install clasp
+        run: npm install --global @google/clasp@3.4.1
+
+      - name: Prepare clasp project
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+        run: |
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          cat > apps-script/.clasp.json <<EOF
+          {
+            "scriptId": "$APPS_SCRIPT_ID"
+          }
+          EOF
+
+      - name: Push Apps Script source
+        working-directory: apps-script
+        run: clasp push --force
+
+      - name: Update existing web-app deployment
+        env:
+          DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+        if: ${{ env.DEPLOYMENT_ID != '' }}
+        working-directory: apps-script
+        run: clasp update-deployment "$DEPLOYMENT_ID"

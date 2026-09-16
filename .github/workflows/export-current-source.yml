@@ -1,0 +1,30 @@
+name: Export current source
+
+on:
+  push:
+    paths:
+      - '.github/workflows/export-current-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Package current source
+        run: |
+          mkdir -p export/apps-script
+          cp index.html export/index.html
+          cp apps-script/*.js apps-script/appsscript.json export/apps-script/
+          cp taxonomy.js export/taxonomy.js 2>/dev/null || true
+          (cd export && zip -r ../current-source.zip .)
+      - name: Upload current source
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-source
+          path: current-source.zip
+          retention-days: 1

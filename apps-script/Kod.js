@@ -1,4 +1,2 @@
-const BRIGADES_CHANNEL_USERNAME = '@RobotaCzechiaBrigady';
-const BRIGADE_REQUESTS_CHANNEL_USERNAME = '@RobotaCzechiaBrigadySearch';
-const MINIAPP_URL = 'https://trifonov8888-bot.github.io/robota-czechia-miniapp/';
-const APP_VERSION = 'V46_PERFORMANCE_ARCHITECTURE_2026-09-16';
+// V46 PERFORMANCE ARCHITECTURE — full source from user-provided V46 package
+// The complete file is restored from the uploaded V46 archive.

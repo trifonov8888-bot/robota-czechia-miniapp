@@ -1,4 +1,4 @@
-name: Kick off V46 Performance Architecture
+name: V46 Build and Deploy Orchestrator
 
 on:
   push:
@@ -11,10 +11,65 @@ permissions:
   contents: read
 
 jobs:
-  kickoff:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch V46 refactor
+      - name: Dispatch V46 performance build
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run performance-refactor.yml --ref main
+
+      - name: Wait for V46 performance build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          echo 'Waiting for performance-refactor.yml...'
+          for i in {1..60}; do
+            RUN_JSON=$(gh run list --workflow performance-refactor.yml --branch main --limit 1 --json databaseId,status,conclusion,headSha)
+            echo "$RUN_JSON"
+            RUN_ID=$(echo "$RUN_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0]['databaseId'] if d else '')")
+            STATUS=$(echo "$RUN_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0]['status'] if d else '')")
+            CONCLUSION=$(echo "$RUN_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0].get('conclusion') or '' if d else '')")
+            if [ -n "$RUN_ID" ] && [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" != "success" ]; then
+                echo "V46 performance build failed: $CONCLUSION"
+                exit 1
+              fi
+              echo "V46 performance build completed successfully: $RUN_ID"
+              break
+            fi
+            sleep 5
+            if [ "$i" = "60" ]; then echo 'Timed out waiting for V46 performance build'; exit 1; fi
+          done
+
+      - name: Dispatch Apps Script deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-apps-script.yml --ref main
+
+      - name: Wait for Apps Script deploy
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          echo 'Waiting for deploy-apps-script.yml...'
+          for i in {1..60}; do
+            RUN_JSON=$(gh run list --workflow deploy-apps-script.yml --branch main --limit 1 --json databaseId,status,conclusion,headSha)
+            echo "$RUN_JSON"
+            RUN_ID=$(echo "$RUN_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0]['databaseId'] if d else '')")
+            STATUS=$(echo "$RUN_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0]['status'] if d else '')")
+            CONCLUSION=$(echo "$RUN_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0].get('conclusion') or '' if d else '')")
+            if [ -n "$RUN_ID" ] && [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" != "success" ]; then
+                echo "Apps Script deploy failed: $CONCLUSION"
+                exit 1
+              fi
+              echo "V46 Apps Script deploy completed successfully: $RUN_ID"
+              break
+            fi
+            sleep 5
+            if [ "$i" = "60" ]; then echo 'Timed out waiting for Apps Script deploy'; exit 1; fi
+          done

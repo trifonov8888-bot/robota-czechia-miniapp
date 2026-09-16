@@ -48,6 +48,16 @@ jobs:
           }
           EOF
 
+      - name: Show current Apps Script deployments
+        env:
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+        working-directory: apps-script
+        run: |
+          echo '--- Current Apps Script deployments ---'
+          clasp list-deployments "$APPS_SCRIPT_ID"
+          echo '--- Recent Apps Script versions ---'
+          clasp list-versions "$APPS_SCRIPT_ID"
+
       - name: Push Apps Script source
         working-directory: apps-script
         run: clasp push --force

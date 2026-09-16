@@ -471,7 +471,7 @@ async function uploadSelectedFile(fileKind,entityId,file){
 }
 const apiInflight_=window.apiInflight_||{};window.apiInflight_=apiInflight_;
 async function apiPost(data,timeoutMs=12000,context='general'){
-  const readActions=new Set(['getProfessionTaxonomy','searchCandidates','searchVacancies','getVacancies','searchBrigades','searchBrigadeRequests','getCandidateProfile','getMyCandidateProfile','getCandidateAnnouncement','getPublicCandidateAnnouncement','getPublicCandidateProfile','getVacancy','getPublicVacancyAnnouncement','getBrigade','getBrigadeRequest','getMyProfiles','getCandidatePrefill','getMyEmployer','getMyFavorites','getMyPremiumCandidates','getCandidatePremiumPreview','getVacancyPremiumPreview']);
+  const readActions=new Set(['getProfessionTaxonomy','searchCandidates','searchVacancies','getVacancies','searchBrigades','searchBrigadeRequests','getCandidateProfile','getMyCandidateProfile','getCandidateAnnouncement','getPublicCandidateAnnouncement','getPublicCandidateProfile','getVacancy','getPublicVacancyAnnouncement','getBrigade','getBrigadeRequest','getMyProfiles','getCandidatePrefill','getMyEmployer','getMyFavorites','getMyPremiumCandidates','getCandidatePremiumPreview','getVacancyPremiumPreview','getBrigadePremium']);
   const action=String(data&&data.action||''),isRead=readActions.has(action);let key='';
   if(isRead){try{key=action+'|'+JSON.stringify(data||{});}catch(e){key=action;}}
   if(key&&apiInflight_[key])return apiInflight_[key];
@@ -610,8 +610,15 @@ function searchFilters(){const q=document.getElementById('smartSearchInput')?.va
 async function runSearch(timeoutMs=12000){
   const action=currentSearchMode==='vacancies'?'searchVacancies':currentSearchMode==='candidates'?'searchCandidates':currentSearchMode==='brigadeRequests'?'searchBrigadeRequests':'searchBrigades';
   const filters=searchFilters(),cacheKey='robota_czechia_search_'+currentSearchMode+'_'+JSON.stringify(filters),box=document.getElementById('results');
-  try{var raw=localStorage.getItem(cacheKey);if(raw){var local=JSON.parse(raw);if(local&&local.cross){renderCrossResults(local.cross);}else if(local&&Array.isArray(local.results)){renderResults(currentSearchMode,local.results);}}}catch(e){}
-  if(box.innerHTML.trim()==='')box.innerHTML='<p class="muted">🔎 Ищем подходящие варианты...</p>';
+  var hasLocal=false;
+  try{var raw=localStorage.getItem(cacheKey);if(raw){var local=JSON.parse(raw);if(local&&local.cross){renderCrossResults(local.cross);hasLocal=true;}else if(local&&Array.isArray(local.results)){renderResults(currentSearchMode,local.results);hasLocal=true;}}}catch(e){}
+  if(box.innerHTML.trim()==='' && !hasLocal)box.innerHTML='<p class="muted">🔎 Ищем подходящие варианты...</p>';
+  // When local results exist, the UI is already usable. Refresh in the background
+  // instead of making the user wait for Google Sheets on every search.
+  if(hasLocal){
+    setTimeout(function(){runSearchFresh_(filters,cacheKey,box,action,timeoutMs);},0);
+    return;
+  }
   try{
     if(!window.similarSearchMode){
       let r=await apiPost({action:'searchCrossMatches',filters:Object.assign({},filters,{mode:currentSearchMode})},timeoutMs,'general');
@@ -624,6 +631,20 @@ async function runSearch(timeoutMs=12000){
       renderResults(currentSearchMode,r.results||[]);
     }
   }catch(e){if(box.innerHTML.indexOf('result-card')<0)box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}
+}
+async function runSearchFresh_(filters,cacheKey,box,action,timeoutMs){
+  try{
+    if(!window.similarSearchMode){
+      let r=await apiPost({action:'searchCrossMatches',filters:Object.assign({},filters,{mode:currentSearchMode})},timeoutMs,'general');
+      if(!r.ok)throw new Error(r.error||'Ошибка поиска');
+      try{localStorage.setItem(cacheKey,JSON.stringify({cross:r.results||{primary:[],secondary:[],secondaryType:''},ts:Date.now()}));}catch(e){}
+      if(box&&document.getElementById('results')===box)renderCrossResults(r.results||{});
+    }else{
+      let r=await apiPost({action:action,filters:filters},timeoutMs,'general');if(!r.ok)throw new Error(r.error||'Ошибка поиска');
+      try{localStorage.setItem(cacheKey,JSON.stringify({results:r.results||[],ts:Date.now()}));}catch(e){}
+      if(box&&document.getElementById('results')===box)renderResults(currentSearchMode,r.results||[]);
+    }
+  }catch(e){ /* cached results remain visible */ }
 }
 function line(l,v){return v?'<div class="line"><span class="muted">'+esc(l)+':</span> '+esc(v)+'</div>' : '';}
 function openSearchCandidate(id){
@@ -673,11 +694,15 @@ async function toggleFavoriteUI(type,id){
     document.querySelectorAll('.favorite-btn').forEach(function(b){if(b.dataset.favoriteType===type&&b.dataset.favoriteId===id){b.textContent=r.enabled?'♥ Сохранено':'♡ Сохранить';b.dataset.busy='0';b.disabled=false;}});
     var s2=document.getElementById('savedSection');if(s2)s2.innerHTML=renderFavorites_(favoriteItemsFromLocal_());
   }).catch(function(e){
-    if(saved)window.favoriteMap[key]=true;else delete window.favoriteMap[key];
-    var rollback=setFavoriteLocal_(type,id,saved,localData);clearFavoritePending_(type,id);
-    document.querySelectorAll('.favorite-btn').forEach(function(b){if(b.dataset.favoriteType===type&&b.dataset.favoriteId===id){b.textContent=saved?'♥ Сохранено':'♡ Сохранить';b.dataset.busy='0';b.disabled=false;}});
-    var s3=document.getElementById('savedSection');if(s3)s3.innerHTML=renderFavorites_(rollback);
-    showSavedNotice_('⚠️ Сервер не подтвердил изменение.');
+    // Keep the optimistic local state. A slow/unavailable backend must not undo
+    // a user's tap. The desired state stays in pending storage and is retried
+    // by the next favorites sync.
+    setFavoritePending_(type,id,next,localData);
+    if(next)window.favoriteMap[key]=true;else delete window.favoriteMap[key];
+    var kept=setFavoriteLocal_(type,id,next,localData);
+    document.querySelectorAll('.favorite-btn').forEach(function(b){if(b.dataset.favoriteType===type&&b.dataset.favoriteId===id){b.textContent=next?'♥ Сохранено':'♡ Сохранить';b.dataset.busy='0';b.disabled=false;}});
+    var s3=document.getElementById('savedSection');if(s3)s3.innerHTML=renderFavorites_(kept);
+    showSavedNotice_(next?'♥ Сохранено — синхронизация в фоне':'♥ Удалено — синхронизация в фоне');
   });
 }
 
@@ -700,10 +725,27 @@ async function loadFavorites_(){
       Object.keys(pending).forEach(function(k){var q=pending[k];if(q&&q.enabled){var parts=k.split(':'),type=parts.shift(),id=parts.join(':');if(!merged.some(function(x){return favoriteKey_(x.type,x.id)===k;}))merged.unshift({type:type,id:id,data:q.data||null});}});
       saveFavoritesLocal_(merged);window.favoriteMap={};merged.forEach(function(x){window.favoriteMap[favoriteKey_(x.type,x.id)]=true;});
       document.querySelectorAll('.favorite-btn').forEach(function(b){var k=favoriteKey_(b.dataset.favoriteType,b.dataset.favoriteId);b.textContent=window.favoriteMap[k]?'♥ Сохранено':'♡ Сохранить';});
+      setTimeout(syncFavoritePending_,0);
       return merged.map(function(x){return{type:x.type,announcement_id:x.type==='candidate'?x.id:'',vacancy_id:x.type==='vacancy'?x.id:'',brigade_id:x.type==='brigade'?x.id:'',brigade_request_id:x.type==='request'?x.id:'',data:x.data||null};});
     }
   }catch(e){}
+  setTimeout(syncFavoritePending_,0);
   return local.map(function(x){return{type:x.type,announcement_id:x.type==='candidate'?x.id:'',vacancy_id:x.type==='vacancy'?x.id:'',brigade_id:x.type==='brigade'?x.id:'',brigade_request_id:x.type==='request'?x.id:'',data:x.data||null};});
+}
+function syncFavoritePending_(){
+  var pending=loadFavoritePending_(),uid=clientUser().id||'',keys=Object.keys(pending||{});
+  if(!uid||!keys.length)return;
+  keys.slice(0,8).forEach(function(k){
+    var q=pending[k];if(!q)return;
+    var parts=k.split(':'),type=parts.shift(),id=parts.join(':');
+    apiPost({action:'toggleFavorite',entityType:type,entityId:id,userId:uid,enabled:q.enabled!==false},10000,'background').then(function(r){
+      if(!r||!r.ok)return;
+      clearFavoritePending_(type,id);
+      if(r.enabled){setFavoriteLocal_(type,id,true,r.data||q.data||null);window.favoriteMap=window.favoriteMap||{};window.favoriteMap[k]=true;}
+      else{setFavoriteLocal_(type,id,false);window.favoriteMap=window.favoriteMap||{};delete window.favoriteMap[k];}
+      var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(favoriteItemsFromLocal_());
+    }).catch(function(){});
+  });
 }
 function favoriteFolderTitle_(type){return{candidate:'👤 Сохранённые работники',vacancy:'💼 Сохранённые вакансии',brigade:'👷 Сохранённые бригады',request:'🤝 Сохранённые запросы'}[type]||'Сохранённое';}
 function favoriteFolderIcon_(type){return{candidate:'👤',vacancy:'💼',brigade:'👷',request:'🤝'}[type]||'⭐';}
@@ -898,7 +940,7 @@ async function openPublicCandidateAnnouncement(id,preloaded){
   try{let r=await apiPost({action:'getPublicCandidateAnnouncement',announcementId:aid},10000,'general');if(!r||!r.ok)throw new Error(r?.error||'Объявление не найдено');let o=Object.assign({},r.announcement||{},r.profile||{});o.announcement_id=o.announcement_id||aid;window.searchResultCache=window.searchResultCache||{};window.searchResultCache.candidates=window.searchResultCache.candidates||{};window.searchResultCache.candidates[aid]=o;box.innerHTML=candidateAnnouncementHtml(o,false)+favoriteButtonHtml_('candidate',aid,isFavorite_('candidate',aid))+candidatePremiumActionHtml_(aid);return true;}catch(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';return false;}
 }
 function brigadePremiumActionHtml_(bid){return "<div class=\"divider\"></div><div class=\"hint\">🔒 Контакты бригады доступны после открытия Premium.</div><button type=\"button\" class=\"result-btn premium-btn\" onclick=\"openBrigadePremium('"+encodeURIComponent(bid)+"')\">💎 Premium с контактами</button>";}
-async function openBrigadePremium(id){enterDetailView_();hideNonDetailPanels_();var bid=decodeURIComponent(id||''),box=document.getElementById('detailContent');box.innerHTML='<div class="section-title">💎 Premium</div><p class="muted">Открываем контакты бригады…</p>';try{var r=await apiPost({action:'getBrigadePremium',brigadeId:bid,userId:clientUser().id},12000,'general');if(!r||!r.ok){box.innerHTML='<p class="error">❌ '+esc(r?.error||'Доступ к контактам ещё не открыт')+'</p>';return;}var o=r.brigade||{};box.innerHTML=detailHtml('brigade',o)+ '<div class="divider"></div><div class="success">✅ Контакты открыты.</div>'+line('Контакт',o['Контакт']||o.contact)+line('Telegram',o['Telegram']||o.telegram)+favoriteButtonHtml_('brigade',bid,true);}catch(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}}
+async function openBrigadePremium(id){enterDetailView_();hideNonDetailPanels_();var bid=decodeURIComponent(id||''),box=document.getElementById('detailContent');var cached=window.searchResultCache?.brigades?.[String(bid)];box.innerHTML=cached?detailHtml('brigade',cached)+'<div class="divider"></div><p class="muted">💎 Проверяем доступ к контактам…</p>':'<div class="section-title">💎 Premium</div><p class="muted">Открываем контакты бригады…</p>';try{var r=await apiPost({action:'getBrigadePremium',brigadeId:bid,userId:clientUser().id},12000,'general');if(!r||!r.ok){box.innerHTML='<p class="error">❌ '+esc(r?.error||'Доступ к контактам ещё не открыт')+'</p>';return;}var o=r.brigade||{};box.innerHTML=detailHtml('brigade',o)+ '<div class="divider"></div><div class="success">✅ Контакты открыты.</div>'+line('Контакт',o['Контакт']||o.contact)+line('Telegram',o['Telegram']||o.telegram)+favoriteButtonHtml_('brigade',bid,true);}catch(e){box.innerHTML='<p class="error">❌ '+esc(e.message)+'</p>';}}
 function candidatePremiumActionHtml_(aid){return '<div class="divider"></div><div class="hint">🔒 Контакты доступны после открытия Premium.</div><button class="result-btn premium-btn" onclick="openCandidatePremium(\''+esc(aid)+'\')">💎 Premium с контактами</button>';}async function openPublicVacancyAnnouncement(id,preloaded){
   window.lastDetailContext='search';document.getElementById('searchPanel').classList.add('hidden');document.getElementById('detailPanel').classList.remove('hidden');
   let box=document.getElementById('detailContent'),aid=decodeURIComponent(id),cached=preloaded||(window.searchResultCache?.vacancies?.[String(aid)]);

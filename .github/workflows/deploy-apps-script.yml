@@ -1,12 +1,9 @@
 name: Deploy Apps Script backend
 
+# Initially manual. After the three repository secrets are configured,
+# the workflow can be switched to automatic push deployment.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'apps-script/**'
-      - '.github/workflows/deploy-apps-script.yml'
 
 permissions:
   contents: read

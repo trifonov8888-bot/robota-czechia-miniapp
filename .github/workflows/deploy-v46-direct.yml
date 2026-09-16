@@ -29,7 +29,13 @@ jobs:
         run: |
           set -e
           git show 4c1cb3b234cde97bf40d8ddd1540d0d6421324b4:.github/workflows/performance-refactor.yml > /tmp/v46-builder.yml
-          ruby -e 'require "yaml"; y=YAML.load_file("/tmp/v46-builder.yml"); s=y["jobs"]["performance-refactor"]["steps"].find{|x| x["name"]=="Apply V46 source refactor"}; abort("V46 refactor step not found") unless s; File.write("/tmp/apply-v46.sh", s["run"]);'
+          python3 - <<'PY'
+          import yaml
+          y=yaml.safe_load(open('/tmp/v46-builder.yml',encoding='utf-8'))
+          s=next((x for x in y['jobs']['performance-refactor']['steps'] if x.get('name')=='Apply V46 source refactor'),None)
+          if not s: raise SystemExit('V46 refactor step not found')
+          open('/tmp/apply-v46.sh','w',encoding='utf-8').write(s['run'])
+          PY
           bash /tmp/apply-v46.sh
 
       - name: Validate V46 source

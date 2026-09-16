@@ -1,0 +1,20 @@
+name: Kick off V46 Performance Architecture
+
+on:
+  push:
+    paths:
+      - '.github/workflows/kickoff-v46-trigger.txt'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  kickoff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch V46 refactor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run performance-refactor.yml --ref main

@@ -1298,3 +1298,8 @@ function submitDraft(d){
 
 function jsonResponse(o){return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);}
 function telegramWebhookResponse_(text){return HtmlService.createHtmlOutput(String(text||'OK'));}
+
+
+/* V46_1_CROSS_SCORE_OVERRIDE */
+function crossEntityScoreV2_(fields,rel,kind){var vals=taxonomySplit_(fields),best=0;for(var i=0;i<vals.length;i++){var v=vals[i];if(kind==='candidate'){if(crossTokenMatches_(v,rel.professionNames))best=Math.max(best,1000);}else{if(crossTokenMatches_(v,rel.specializations))best=Math.max(best,1000);if(crossTokenMatches_(v,rel.professionNames))best=Math.max(best,900);}if(crossTokenMatches_(v,rel.aliases))best=Math.max(best,950);}if(best===0&&kind==='candidate'&&rel.profession&&rel.profession.name){var rr=CROSS_PROFESSION_RELATIONS_V2[rel.profession.name]||[];for(var j=0;j<rr.length;j++)if(vals.some(function(v){return taxonomyNormalize_(v)===taxonomyNormalize_(rr[j]);})){best=700;break;}}return best;}
+

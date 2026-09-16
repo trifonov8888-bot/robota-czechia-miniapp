@@ -292,3 +292,15 @@ function generateCandidateProfilePdf_(announcement,profile,access){
   var blob=HtmlService.createHtmlOutput(html).getBlob().getAs(MimeType.PDF).setName('Robota_Czechia_'+String(title).replace(/[^A-Za-zА-Яа-я0-9_-]+/g,'_')+'_'+String(announcement.announcement_id||'candidate')+'.pdf');
   var folderName='Robota Czechia Premium PDFs',it=DriveApp.getFoldersByName(folderName),folder=it.hasNext()?it.next():DriveApp.createFolder(folderName),file=folder.createFile(blob);try{file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);}catch(e){}return file.getUrl();
 }
+
+
+/* V46_1_BRIGADE_PREMIUM_RAW_OVERRIDE */
+function brigadeForPremium_(brigadeId){var bid=String(brigadeId||'');if(!bid)return null;var ck='PREMIUM_RAW_BRIGADE_'+bid;try{var hit=CacheService.getScriptCache().get(ck);if(hit)return JSON.parse(hit);}catch(e){}var o=getById('Бригады',bid,'brigade_id');if(o){try{CacheService.getScriptCache().put(ck,JSON.stringify(o),600);}catch(e2){}return o;}return null;}
+function favoriteCacheKey_(uid){return 'FAVORITES_V46_1_'+String(uid||'');}
+
+
+
+/* V46_1_FAVORITE_LOCK_OVERRIDE */
+var __V46_1_originalToggleFavorite=toggleFavorite;
+function toggleFavorite(d){var lock=LockService.getScriptLock();try{lock.waitLock(4000);}catch(e){return{ok:false,error:'Синхронизация избранного занята, повторите ещё раз'};}try{return __V46_1_originalToggleFavorite(d);}finally{try{lock.releaseLock();}catch(e){}}}
+

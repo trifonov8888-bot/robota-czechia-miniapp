@@ -707,7 +707,7 @@ async function loadFavorites_(){
 }
 function favoriteFolderTitle_(type){return{candidate:'👤 Сохранённые работники',vacancy:'💼 Сохранённые вакансии',brigade:'👷 Сохранённые бригады',request:'🤝 Сохранённые запросы'}[type]||'Сохранённое';}
 function favoriteFolderIcon_(type){return{candidate:'👤',vacancy:'💼',brigade:'👷',request:'🤝'}[type]||'⭐';}
-function favoriteFolderOpen_(type){window.favoriteFolderOpen=type;var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(favoriteItemsFromLocal_());}
+function favoriteFolderOpen_(type){window.favoriteFolderOpen=type;var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(favoriteItemsFromLocal_());loadFavorites_().then(function(favs){var sec2=document.getElementById('savedSection');if(sec2&&window.favoriteFolderOpen===type)sec2.innerHTML=renderFavorites_(favs.map(function(x){return{type:x.type,id:x.announcement_id||x.vacancy_id||x.brigade_id||x.brigade_request_id,data:x.data||null};}));}).catch(function(){});}
 function favoriteFolderClose_(){window.favoriteFolderOpen='';var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(favoriteItemsFromLocal_());}
 function renderFavorites_(items){
   items=items||[];var groups={candidate:[],vacancy:[],brigade:[],request:[]};items.forEach(function(x){if(groups[x.type])groups[x.type].push(x);});

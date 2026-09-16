@@ -24,11 +24,11 @@ jobs:
         run: |
           set -e
           git checkout bfd83d6580e978b95eb5ccbf82d748e405294b69 -- apps-script/Kod.js
-          git checkout bd78bc08c1fcb643a62c9f51d3f5de882ad9652e -- .github/workflows/performance-refactor.yml
+          git checkout 4c1cb3b234cde97bf40d8ddd1540d0d6421324b4 -- .github/workflows/performance-refactor.yml
           git config user.name 'trifonov8888-bot'
           git config user.email 'trifonov88.88@gmail.com'
           git add apps-script/Kod.js .github/workflows/performance-refactor.yml
-          git diff --cached --quiet || git commit -m 'fix: restore V46 build sources'
+          git diff --cached --quiet || git commit -m 'fix: restore known-good V46 builder'
           git push origin HEAD:main
 
       - name: Dispatch V46 builder

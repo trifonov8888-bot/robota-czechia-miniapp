@@ -17,33 +17,28 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Apply V46.1 source patch
-        run: python3 scripts/apply-v461.py
-
+      - name: Apply robust V46.1 patch
+        run: python3 scripts/apply-v461b.py
       - name: Validate source
         run: |
           set -e
           node --check apps-script/Kod.js
           node --check apps-script/Files.js
           grep -q 'V46_PERFORMANCE_ARCHITECTURE_2026-09-16' apps-script/Kod.js
+          grep -q 'V46_1_CLIENT_CROSS_OVERRIDE' index.html
           echo 'V46.1 source validation passed.'
-
       - name: Commit source changes
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html apps-script/Kod.js apps-script/Files.js
           if git diff --cached --quiet; then echo 'Source already contains V46.1'; else git commit -m 'fix: V46.1 search favorites premium navigation' && git push; fi
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install clasp
         run: npm install --global @google/clasp@3.4.1
-
       - name: Prepare clasp
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
@@ -52,11 +47,9 @@ jobs:
           set -e
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
           printf '{"scriptId":"%s"}\n' "$APPS_SCRIPT_ID" > apps-script/.clasp.json
-
       - name: Push Apps Script
         working-directory: apps-script
         run: clasp push --force
-
       - name: Update existing Web App deployment
         env:
           DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}

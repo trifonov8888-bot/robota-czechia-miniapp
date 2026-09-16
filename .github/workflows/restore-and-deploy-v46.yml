@@ -1,6 +1,9 @@
 name: Restore and Deploy V46
 
 on:
+  push:
+    paths:
+      - '.github/v46-now'
   workflow_dispatch:
 
 permissions:

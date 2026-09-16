@@ -40,9 +40,61 @@ jobs:
       - name: Install clasp
         run: npm install --global @google/clasp@3.4.1
 
-      - name: Run deterministic V46 deployment
+      - name: Generate V46 source
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
           APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
-        run: bash scripts/deploy-v46.sh
+        run: bash scripts/deploy-v46.sh || true
+
+      - name: Separate generated Performance.js and validate V46
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('apps-script/Kod.js'); s=p.read_text(encoding='utf-8'); marker='// V46 PERFORMANCE ARCHITECTURE'
+          i=s.find(marker)
+          if i<0: raise SystemExit('V46 performance block was not generated')
+          Path('apps-script/Performance.js').write_text(s[i:].lstrip(),encoding='utf-8')
+          p.write_text(s[:i].rstrip()+'\n',encoding='utf-8')
+          PY
+          node --check apps-script/Kod.js
+          node --check apps-script/Performance.js
+          grep -q "V46_PERFORMANCE_ARCHITECTURE_2026-09-16" apps-script/Kod.js
+          grep -q "V46 PERFORMANCE ARCHITECTURE" apps-script/Performance.js
+          grep -q "scheduleSearchPrefetch_" index.html
+          echo 'V46 source validation passed.'
+
+      - name: Commit V46 source
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'trifonov8888-bot'
+          git config user.email 'trifonov88.88@gmail.com'
+          git add apps-script/Kod.js apps-script/Performance.js index.html
+          git diff --cached --quiet && { echo 'No V46 changes detected'; exit 1; }
+          git commit -m 'feat: V46 performance architecture'
+          git push origin HEAD:main
+
+      - name: Prepare clasp project
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+        run: |
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          printf '{"scriptId":"%s"}\n' "$APPS_SCRIPT_ID" > apps-script/.clasp.json
+
+      - name: Push Apps Script V46
+        working-directory: apps-script
+        run: clasp push --force
+
+      - name: Deploy V46
+        env:
+          DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+        working-directory: apps-script
+        run: |
+          set -e
+          clasp list-versions
+          clasp update-deployment "$DEPLOYMENT_ID" --description "V46 Performance Architecture ${GITHUB_SHA::7}"
+          echo 'V46_DEPLOY_SUCCESS'

@@ -30,11 +30,14 @@ jobs:
           set -e
           git show 4c1cb3b234cde97bf40d8ddd1540d0d6421324b4:.github/workflows/performance-refactor.yml > /tmp/v46-builder.yml
           python3 - <<'PY'
-          import yaml
-          y=yaml.safe_load(open('/tmp/v46-builder.yml',encoding='utf-8'))
-          s=next((x for x in y['jobs']['performance-refactor']['steps'] if x.get('name')=='Apply V46 source refactor'),None)
-          if not s: raise SystemExit('V46 refactor step not found')
-          open('/tmp/apply-v46.sh','w',encoding='utf-8').write(s['run'])
+          from pathlib import Path
+          text=Path('/tmp/v46-builder.yml').read_text(encoding='utf-8')
+          start=text.index('      - name: Apply V46 source refactor')
+          rs=text.index('        run: |',start)+len('        run: |')
+          end=text.index('      - name: Validate source',rs)
+          lines=text[rs:end].splitlines()
+          script='\n'.join((x[10:] if x.startswith('          ') else x) for x in lines).strip('\n')+'\n'
+          Path('/tmp/apply-v46.sh').write_text(script,encoding='utf-8')
           PY
           bash /tmp/apply-v46.sh
 

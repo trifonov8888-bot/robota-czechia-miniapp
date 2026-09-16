@@ -1,9 +1,12 @@
 name: Deploy Apps Script backend
 
-# Initially manual. After the three repository secrets are configured,
-# the workflow can be switched to automatic push deployment.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps-script/**'
+      - '.github/workflows/deploy-apps-script.yml'
 
 permissions:
   contents: read
@@ -19,9 +22,11 @@ jobs:
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+          DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
         run: |
           test -n "$CLASPRC_JSON" || { echo 'Missing GitHub Actions secret: CLASPRC_JSON'; exit 1; }
           test -n "$APPS_SCRIPT_ID" || { echo 'Missing GitHub Actions secret: APPS_SCRIPT_ID'; exit 1; }
+          test -n "$DEPLOYMENT_ID" || { echo 'Missing GitHub Actions secret: APPS_SCRIPT_DEPLOYMENT_ID'; exit 1; }
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -50,6 +55,8 @@ jobs:
       - name: Update existing web-app deployment
         env:
           DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
-        if: ${{ env.DEPLOYMENT_ID != '' }}
         working-directory: apps-script
-        run: clasp update-deployment "$DEPLOYMENT_ID"
+        run: |
+          clasp update-deployment "$DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA::7}"
+          echo "Deployed commit: ${GITHUB_SHA}"
+          echo "The previous Apps Script deployment version remains available for rollback."

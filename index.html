@@ -660,57 +660,37 @@ function openSearchCandidate(id){
 }
 function openSearchVacancy(id){window.lastDetailContext=document.body.classList.contains('similar-search-only')?'similarSearch':'search';var aid=decodeURIComponent(id),cached=window.searchResultCache&&window.searchResultCache.vacancies&&window.searchResultCache.vacancies[String(aid)];document.getElementById('searchPanel').classList.add('hidden');document.getElementById('detailPanel').classList.remove('hidden');enterDetailView_();var box=document.getElementById('detailContent');if(!cached){box.innerHTML='<p class="error">❌ Вакансия не найдена в результатах поиска.</p>';return;}box.innerHTML=detailHtml('vacancy',cached)+favoriteButtonHtml_('vacancy',aid,isFavorite_('vacancy',aid));}
 
-function favoritesLocalKey_(){return 'robota_czechia_favorites_'+String(clientUser().id||'');}
-// Favorites are server-authoritative. Keep only the last confirmed response in memory
-// so a failed/slow refresh can never replace a valid list with zeros.
-window.favoriteItemsCache = window.favoriteItemsCache || null;
-function loadFavoritesLocal_(){return Array.isArray(window.favoriteItemsCache)?window.favoriteItemsCache:[];}
-function saveFavoritesLocal_(items){window.favoriteItemsCache=Array.isArray(items)?items:[];}
-function favoriteItemsFromLocal_(){return Array.isArray(window.favoriteItemsCache)?window.favoriteItemsCache:[];}
-function setFavoriteLocal_(type,id,enabled,data){
-  var items=favoriteItemsFromLocal_().slice(),idx=items.findIndex(function(x){return x.type===type&&String(x.id)===String(id);});
-  if(enabled){var item={type:type,id:String(id),data:data||favoriteDataFor_(type,id)||null};if(idx>=0)items[idx]=Object.assign({},items[idx],item);else items.unshift(item);}
-  else if(idx>=0)items.splice(idx,1);
-  saveFavoritesLocal_(items);return items;
-}
+function favoritesLocalKey_(){return 'robota_czechia_favorites_v3_'+String(clientUser().id||'');}
+function favoritesPendingKey_(){return 'robota_czechia_favorites_pending_v3_'+String(clientUser().id||'');}
+window.favoriteItemsCache=window.favoriteItemsCache||null;
+window.favoritePending=window.favoritePending||{};
+window.favoriteSyncInflight=window.favoriteSyncInflight||{};
+function loadFavoritesLocal_(){if(Array.isArray(window.favoriteItemsCache))return window.favoriteItemsCache;try{var raw=localStorage.getItem(favoritesLocalKey_());var a=raw?JSON.parse(raw):[];window.favoriteItemsCache=Array.isArray(a)?a:[];}catch(e){window.favoriteItemsCache=[];}return window.favoriteItemsCache;}
+function saveFavoritesLocal_(items){window.favoriteItemsCache=Array.isArray(items)?items:[];try{localStorage.setItem(favoritesLocalKey_(),JSON.stringify(window.favoriteItemsCache));}catch(e){}}
+function loadFavoritesPending_(){try{var raw=localStorage.getItem(favoritesPendingKey_());var o=raw?JSON.parse(raw):{};window.favoritePending=o&&typeof o==='object'?o:{};}catch(e){window.favoritePending={};}return window.favoritePending;}
+function saveFavoritesPending_(){try{localStorage.setItem(favoritesPendingKey_(),JSON.stringify(window.favoritePending||{}));}catch(e){}}
+function favoriteItemsFromLocal_(){return loadFavoritesLocal_();}
+function setFavoriteLocal_(type,id,enabled,data){var items=favoriteItemsFromLocal_().slice(),idx=items.findIndex(function(x){return x.type===type&&String(x.id)===String(id);});if(enabled){var item={type:type,id:String(id),data:data||favoriteDataFor_(type,id)||null};if(idx>=0)items[idx]=Object.assign({},items[idx],item);else items.unshift(item);}else if(idx>=0)items.splice(idx,1);saveFavoritesLocal_(items);return items;}
 function favoriteDataUsable_(type,d){if(!d||typeof d!=='object'||d._preview)return false;if(type==='candidate')return !!(d.title||d.profession||d.city);if(type==='vacancy')return !!(d.title||d.profession||d.city);if(type==='brigade')return !!(d.name||d.specialization||d.city);return !!(d.profession||d.city);}
 function favoriteButtonHtml_(type,id,saved){var fn="toggleFavoriteUI('"+type+"','"+encodeURIComponent(id)+"')";return '<button type="button" class="result-btn secondary favorite-btn" data-favorite-type="'+esc(type)+'" data-favorite-id="'+esc(id)+'" onclick="'+fn+'">'+(saved?'♥ Сохранено':'♡ Сохранить')+'</button>';}
 function favoriteKey_(type,id){return String(type||'')+':'+String(id||'');}
 function isFavorite_(type,id){return !!(window.favoriteMap&&window.favoriteMap[favoriteKey_(type,id)]);}
 function favoriteDataFor_(type,id){var c=null;if(type==='candidate')c=window.searchResultCache?.candidates?.[String(id)];else if(type==='vacancy')c=window.searchResultCache?.vacancies?.[String(id)];else if(type==='brigade')c=window.searchResultCache?.brigades?.[String(id)];else if(type==='request')c=window.searchResultCache?.brigadeRequests?.[String(id)];return c||null;}
-async function toggleFavoriteUI(type,id){
-  id=decodeURIComponent(id||'');var saved=isFavorite_(type,id),buttons=[...document.querySelectorAll('.favorite-btn')].filter(function(b){return b.dataset.favoriteType===type&&b.dataset.favoriteId===id;});
-  if(buttons.some(function(b){return b.dataset.busy==='1';}))return;
-  var next=!saved;buttons.forEach(function(b){b.dataset.busy='1';b.disabled=true;});
-  try{
-    var r=await apiPost({action:'toggleFavorite',entityType:type,entityId:id,userId:clientUser().id,enabled:next},15000,'general');
-    if(!r||!r.ok)throw new Error(r?.error||'Сервер не подтвердил изменение');
-    // The server has confirmed the mutation. Update the last confirmed list directly;
-    // do not issue a second slow getMyFavorites request.
-    var items=setFavoriteLocal_(type,id,!!r.enabled,r.data||favoriteDataFor_(type,id));
-    window.favoriteMap={};items.forEach(function(x){window.favoriteMap[favoriteKey_(x.type,x.id)]=true;});
-    var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(items);
-    buttons.forEach(function(b){b.dataset.busy='0';b.disabled=false;b.textContent=isFavorite_(type,id)?'♥ Сохранено':'♡ Сохранить';});
-    showSavedNotice_(r.enabled?'♥ Сохранено':'♥ Удалено из сохранённых');
-  }catch(e){buttons.forEach(function(b){b.dataset.busy='0';b.disabled=false;});showSavedNotice_('❌ '+(e.message||'Не удалось изменить избранное'));}
+function rebuildFavoriteMap_(){window.favoriteMap={};favoriteItemsFromLocal_().forEach(function(x){window.favoriteMap[favoriteKey_(x.type,x.id)]=true;});}
+function renderFavoritesFromLocal_(){var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(favoriteItemsFromLocal_());}
+async function syncFavoriteMutation_(key){if(window.favoriteSyncInflight[key])return window.favoriteSyncInflight[key];var p=(async function(){while(window.favoritePending&&window.favoritePending[key]){var q=window.favoritePending[key],parts=key.split(':'),type=parts.shift(),id=parts.join(':');try{var r=await apiPost({action:'toggleFavorite',entityType:type,entityId:id,userId:clientUser().id,enabled:!!q.enabled},20000,'general');if(!r||!r.ok)throw new Error(r?.error||'Сервер не подтвердил изменение');if(window.favoritePending[key]&&!!window.favoritePending[key].enabled===!!q.enabled){delete window.favoritePending[key];saveFavoritesPending_();if(r.enabled){setFavoriteLocal_(type,id,true,r.data||favoriteDataFor_(type,id));}else{setFavoriteLocal_(type,id,false);}}else{continue;}rebuildFavoriteMap_();document.querySelectorAll('.favorite-btn').forEach(function(b){var k=favoriteKey_(b.dataset.favoriteType,b.dataset.favoriteId);b.textContent=window.favoriteMap[k]?'♥ Сохранено':'♡ Сохранить';});renderFavoritesFromLocal_();}catch(e){console.warn('Favorite sync failed',key,e);break;}}})();window.favoriteSyncInflight[key]=p;p.finally(function(){delete window.favoriteSyncInflight[key];}).catch(function(){});return p;}
+function syncPendingFavorites_(){loadFavoritesPending_();Object.keys(window.favoritePending||{}).forEach(function(k){syncFavoriteMutation_(k);});}
+async function toggleFavoriteUI(type,id){id=decodeURIComponent(id||'');var key=favoriteKey_(type,id),saved=isFavorite_(type,id),next=!saved,buttons=[...document.querySelectorAll('.favorite-btn')].filter(function(b){return b.dataset.favoriteType===type&&b.dataset.favoriteId===id;});if(buttons.some(function(b){return b.dataset.busy==='1';}))return;buttons.forEach(function(b){b.dataset.busy='1';b.disabled=true;});
+  // Instant UI: the user never waits for Google Sheets. The desired state is persisted locally and synchronized in the background.
+  loadFavoritesPending_();window.favoritePending[key]={enabled:next,at:Date.now()};saveFavoritesPending_();setFavoriteLocal_(type,id,next,favoriteDataFor_(type,id));rebuildFavoriteMap_();renderFavoritesFromLocal_();buttons.forEach(function(b){b.dataset.busy='0';b.disabled=false;b.textContent=next?'♥ Сохранено':'♡ Сохранить';});showSavedNotice_(next?'♥ Сохранено':'♥ Удалено из сохранённых');syncFavoriteMutation_(key);
 }
 function showSavedNotice_(text){var old=document.getElementById('savedToast');if(old)old.remove();var d=document.createElement('div');d.id='savedToast';d.textContent=text;d.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;background:#202735;border:1px solid #343d4c;border-radius:12px;padding:10px 14px;font-weight:800;box-shadow:0 6px 24px rgba(0,0,0,.3)';document.body.appendChild(d);setTimeout(function(){d.remove();},1400);}
-async function loadFavorites_(){
-  var previous=favoriteItemsFromLocal_();
-  try{
-    var r=await apiPost({action:'getMyFavorites',userId:clientUser().id},15000,'general');
-    if(r&&r.ok){
-      var items=(r.items||[]).map(function(x){return{type:x.type,id:String(x.announcement_id||x.vacancy_id||x.brigade_id||x.brigade_request_id||''),data:x.data||null};}).filter(function(x){return x.id;});
-      saveFavoritesLocal_(items);window.favoriteMap={};items.forEach(function(x){window.favoriteMap[favoriteKey_(x.type,x.id)]=true;});
-      document.querySelectorAll('.favorite-btn').forEach(function(b){var k=favoriteKey_(b.dataset.favoriteType,b.dataset.favoriteId);b.textContent=window.favoriteMap[k]?'♥ Сохранено':'♡ Сохранить';});
-      var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(items);return items;
-    }
-  }catch(e){console.warn('getMyFavorites failed',e);}
-  // Never destroy a previously confirmed list because of a timeout/error.
-  window.favoriteMap={};previous.forEach(function(x){window.favoriteMap[favoriteKey_(x.type,x.id)]=true;});
-  var sec2=document.getElementById('savedSection');if(sec2)sec2.innerHTML=renderFavorites_(previous);
-  return previous;
-}
+function mergeFavoritesServer_(serverItems){loadFavoritesPending_();var local=favoriteItemsFromLocal_(),pending=window.favoritePending||{},serverMap={};(serverItems||[]).forEach(function(x){serverMap[favoriteKey_(x.type,x.id)]=x;});var localMap={};local.forEach(function(x){localMap[favoriteKey_(x.type,x.id)]=x;});var out=[];Object.keys(serverMap).forEach(function(k){if(pending[k]){if(pending[k].enabled)out.push(localMap[k]||serverMap[k]);}else out.push(serverMap[k]);});Object.keys(pending).forEach(function(k){if(pending[k].enabled&&!serverMap[k]&&localMap[k])out.push(localMap[k]);});saveFavoritesLocal_(out);rebuildFavoriteMap_();return out;}
+function loadFavorites_(){var local=favoriteItemsFromLocal_();rebuildFavoriteMap_();if(local.length)renderFavoritesFromLocal_();loadFavoritesPending_();syncPendingFavorites_();var p=apiPost({action:'getMyFavorites',userId:clientUser().id},20000,'general').then(function(r){if(r&&r.ok){var items=(r.items||[]).map(function(x){return{type:x.type,id:String(x.announcement_id||x.vacancy_id||x.brigade_id||x.brigade_request_id||''),data:x.data||null};}).filter(function(x){return x.id;});var merged=mergeFavoritesServer_(items);document.querySelectorAll('.favorite-btn').forEach(function(b){var k=favoriteKey_(b.dataset.favoriteType,b.dataset.favoriteId);b.textContent=window.favoriteMap[k]?'♥ Сохранено':'♡ Сохранить';});renderFavorites_(merged);renderFavoritesFromLocal_();return merged;}return favoriteItemsFromLocal_();}).catch(function(e){console.warn('getMyFavorites failed',e);return favoriteItemsFromLocal_();});return p;}
+function favoriteFolderTitle_(type){return{candidate:'👤 Сохранённые работники',vacancy:'💼 Сохранённые вакансии',brigade:'👷 Сохранённые бригады',request:'🤝 Сохранённые запросы'}[type]||'Сохранённое';}
+function favoriteFolderIcon_(type){return{candidate:'👤',vacancy:'💼',brigade:'👷',request:'🤝'}[type]||'⭐';}
+function favoriteFolderOpen_(type){window.favoriteFolderOpen=type;var items=favoriteItemsFromLocal_();var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=items.length?renderFavorites_(items):'<div class="divider"></div><div class="section-title">'+favoriteFolderIcon_(type)+' '+esc(favoriteFolderTitle_(type).replace(/^\S+\s/,''))+'</div><div class="subcard"><div class="muted">Загружаем сохранённые…</div></div>';loadFavorites_();}
+function favoriteFolderClose_(){window.favoriteFolderOpen='';renderFavoritesFromLocal_();loadFavorites_();}
 function favoriteFolderTitle_(type){return{candidate:'👤 Сохранённые работники',vacancy:'💼 Сохранённые вакансии',brigade:'👷 Сохранённые бригады',request:'🤝 Сохранённые запросы'}[type]||'Сохранённое';}
 function favoriteFolderIcon_(type){return{candidate:'👤',vacancy:'💼',brigade:'👷',request:'🤝'}[type]||'⭐';}
 async function favoriteFolderOpen_(type){window.favoriteFolderOpen=type;var items=favoriteItemsFromLocal_();if(items.length){var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(items);}await loadFavorites_();}
@@ -734,7 +714,7 @@ async function startSave_(type,id){
   try{
     var r=await apiPost({action:'toggleFavorite',entityType:type,entityId:id,userId:clientUser().id,enabled:true},15000,'general');
     if(!r||!r.ok)throw new Error(r?.error||'Сервер не подтвердил сохранение');
-    await loadFavorites_();
+    setFavoriteLocal_(type,id,true,r.data||favoriteDataFor_(type,id));rebuildFavoriteMap_();
     if(box)box.innerHTML='<div class="section-title">♥ Сохранено</div><p class="success">Объявление сохранено.</p><button class="result-btn" onclick="setNav(&quot;profile&quot;)">👤 Открыть сохранённое</button>';
   }catch(e){if(box)box.innerHTML='<div class="section-title">❌ Не удалось сохранить</div><p class="error">'+esc(e.message||'Ошибка')+'</p>';}
 }

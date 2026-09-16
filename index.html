@@ -722,7 +722,7 @@ function renderFavorites_(items){
   [['candidate','👤','Сохранённые работники'],['vacancy','💼','Сохранённые вакансии'],['brigade','👷','Сохранённые бригады'],['request','🤝','Сохранённые запросы']].forEach(function(g){var arr=groups[g[0]];html+='<button type="button" class="saved-folder" onclick="favoriteFolderOpen_(\''+g[0]+'\')"><span class="saved-folder-icon">'+g[1]+'</span><span class="saved-folder-title">'+g[2]+'</span><span class="saved-folder-count">'+arr.length+'</span><span>›</span></button>';});return html;
 }
 
-function startSave_(type,id){
+async function startSave_(type,id){
   enterDetailView_();
   id=decodeURIComponent(String(id||''));
   var box=document.getElementById('detailContent');

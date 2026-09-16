@@ -10,7 +10,7 @@ const JOB_SEEKERS_CHANNEL_USERNAME = '@rabota_czechia_jobs';
 const BRIGADES_CHANNEL_USERNAME = '@RobotaCzechiaBrigady';
 const BRIGADE_REQUESTS_CHANNEL_USERNAME = '@RobotaCzechiaBrigadySearch';
 const MINIAPP_URL = 'https://trifonov8888-bot.github.io/robota-czechia-miniapp/';
-const APP_VERSION = 'V44_UNIFIED_SEARCH_FAVORITES_SPEED_2026-09-16';
+const APP_VERSION = 'V46_PERFORMANCE_ARCHITECTURE_2026-09-16';
 var DB_SPREADSHEET = null;
 
 const CANDIDATE_ANNOUNCEMENT_HEADERS = ['announcement_id','profile_id','user_id','Дата создания','Дата обновления','Статус','Тип объявления','Имя','Желаемая должность','Профессия','Категория','Город','Вся Чехия','Желаемая зарплата от','Желаемая зарплата до','Единица оплаты','Тип работы','Тип занятости','График','Жильё','Языки','Уровень языка','Документы','Опыт','Водительские права','Категории прав','Автомобиль','Квалификация','Навыки','Дата готовности к работе','О себе','Контакт','Telegram','Telegram Message ID','Moderation Message ID','Сгенерированная картинка'];
@@ -709,8 +709,8 @@ function professionScore(value,query){
   return best;
 }
 function searchSheet(sheetName,status,idHeader,filters,mapper){
-  var s=getSheet(sheetName);if(s.getLastRow()<2)return[];var h=getHeaders(s),v=s.getDataRange().getValues(),out=[];filters=filters||{};
-  v.slice(1).forEach(function(r){var o=rowObject(h,r);if(status&&String(o['Статус']||'')!==status)return;if(filters.category&&!eq(o['Категория'],filters.category))return;if(filters.city&&!cityMatch(o,filters.city))return;
+  var rows=perfReadRows_(sheetName);if(!rows.length)return[];var out=[];filters=filters||{};
+  rows.forEach(function(o){if(status&&String(o['Статус']||'')!==status)return;if(filters.category&&!eq(o['Категория'],filters.category))return;if(filters.city&&!cityMatch(o,filters.city))return;
     var queryValue=filters.query||filters.profession;
     var queryValues=Array.isArray(filters.crossQueryTerms)&&filters.crossQueryTerms.length?filters.crossQueryTerms:[queryValue];
     // Similar-search deep links are strict: when the user selected a concrete
@@ -865,7 +865,7 @@ function crossEntityScoreV2_(fields,rel,kind){var vals=taxonomySplit_(fields),be
 function crossQueryTerms_(q){q=String(q||'').trim();return q?[q]:[];}
 function crossTaxonomyScore_(candidate,query){return crossEntityScoreV2_(candidate,crossRelationProfile_(query),'candidate');}
 function crossScoreFields_(fields,terms){var best=0;(terms||[]).forEach(function(q){best=Math.max(best,crossTaxonomyScore_(fields,q)*15);});return best;}
-function crossSearchSheetV2_(sheetName,status,idHeader,query,filters,mapper,kind){filters=filters||{};query=String(query||'').trim();if(!query)return[];var rel=crossRelationProfile_(query),s=getSheet(sheetName);if(!s||s.getLastRow()<2)return[];var h=getHeaders(s),v=s.getDataRange().getValues(),out=[];v.slice(1).forEach(function(r){var o=rowObject(h,r);if(status&&String(o['Статус']||'')!==status)return;if(filters.category&&!eq(o['Категория'],filters.category))return;if(filters.city&&!cityMatch(o,filters.city))return;var fields=kind==='candidate'?[o['Профессия'],o['Желаемая должность']].filter(Boolean).join(' | '):kind==='brigade'?[o['Название бригады'],o['Специализация'],o['Виды работ'],o['Профессии']].filter(Boolean).join(' | '):[o['Профессия'],o['Специализация'],o['Виды работ']].filter(Boolean).join(' | ');var score=crossEntityScoreV2_(fields,rel,kind);if(!score)return;out.push({score:score,ts:new Date(o['Дата обновления']||o['Дата создания']||0).getTime()||0,item:mapper(o)});});out.sort(function(a,b){return b.score-a.score||b.ts-a.ts;});return out.slice(0,100).map(function(x){return x.item;});}
+function crossSearchSheetV2_(sheetName,status,idHeader,query,filters,mapper,kind){filters=filters||{};query=String(query||'').trim();if(!query)return[];var rel=crossRelationProfile_(query),rows=perfReadRows_(sheetName);if(!rows.length)return[];var out=[];rows.forEach(function(o){if(status&&String(o['Статус']||'')!==status)return;if(filters.category&&!eq(o['Категория'],filters.category))return;if(filters.city&&!cityMatch(o,filters.city))return;var fields=kind==='candidate'?[o['Профессия'],o['Желаемая должность']].filter(Boolean).join(' | '):kind==='brigade'?[o['Название бригады'],o['Специализация'],o['Виды работ'],o['Профессии']].filter(Boolean).join(' | '):[o['Профессия'],o['Специализация'],o['Виды работ']].filter(Boolean).join(' | ');var score=crossEntityScoreV2_(fields,rel,kind);if(!score)return;out.push({score:score,ts:new Date(o['Дата обновления']||o['Дата создания']||0).getTime()||0,item:mapper(o)});});out.sort(function(a,b){return b.score-a.score||b.ts-a.ts;});return out.slice(0,100).map(function(x){return x.item;});}
 function crossSearchCandidatesV2_(q,f){
   return crossSearchSheetV2_('Объявления соискателей','Опубликован','announcement_id',q,f,function(o){
     return publicCandidateAnnouncement_(o,{},false);
@@ -876,13 +876,13 @@ function crossSearchVacanciesV2_(q,f){return crossSearchSheetV2_('Ваканси
 function crossSearchRequestsV2_(q,f){return crossSearchSheetV2_('Ищу бригаду','Опубликована','brigade_request_id',q,f,function(o){return {brigade_request_id:o.brigade_request_id,profession:o['Профессия'],category:o['Категория'],specialization:o['Специализация'],workTypes:o['Виды работ']||o['Профессия'],city:o['Город'],brigadeSize:o['Количество человек'],salaryFrom:o['Зарплата от'],salaryTo:o['Зарплата до'],salaryUnit:o['Единица оплаты'],schedule:o['График'],housing:o['Жильё'],description:o['Описание']};},'request');}
 function searchCrossMatches(f){
   f=f||{};var q=String(f.query||f.profession||'').trim();if(!q)return{primary:[],secondary:[],secondaryType:''};
-  var mode=String(f.mode||'candidates'),key='CROSS_V45_'+Utilities.base64EncodeWebSafe(JSON.stringify({q:q,mode:mode,category:f.category||'',city:f.city||''}));
+  var mode=String(f.mode||'candidates'),key='CROSS_V46_'+Utilities.base64EncodeWebSafe(JSON.stringify({q:q,mode:mode,category:f.category||'',city:f.city||''}));
   try{var hit=CacheService.getScriptCache().get(key);if(hit)return JSON.parse(hit);}catch(e){}
   var primary=[],secondary=[],secondaryType='',pf=Object.assign({},f,{query:q});
-  if(mode==='candidates'){primary=crossSearchCandidatesV2_(q,pf);secondary=crossSearchBrigadesV2_(q,pf);secondaryType='brigades';}
-  else if(mode==='brigades'){primary=crossSearchBrigadesV2_(q,pf);secondary=crossSearchCandidatesV2_(q,pf);secondaryType='candidates';}
-  else if(mode==='vacancies'){primary=crossSearchVacanciesV2_(q,pf);secondary=crossSearchRequestsV2_(q,pf);secondaryType='brigadeRequests';}
-  else{primary=crossSearchRequestsV2_(q,pf);secondary=crossSearchVacanciesV2_(q,pf);secondaryType='vacancies';}
+  if(mode==='candidates'){perfReadRowsBatch_(['Объявления соискателей','Бригады']);primary=crossSearchCandidatesV2_(q,pf);secondary=crossSearchBrigadesV2_(q,pf);secondaryType='brigades';}
+  else if(mode==='brigades'){perfReadRowsBatch_(['Бригады','Объявления соискателей']);primary=crossSearchBrigadesV2_(q,pf);secondary=crossSearchCandidatesV2_(q,pf);secondaryType='candidates';}
+  else if(mode==='vacancies'){perfReadRowsBatch_(['Вакансии','Ищу бригаду']);primary=crossSearchVacanciesV2_(q,pf);secondary=crossSearchRequestsV2_(q,pf);secondaryType='brigadeRequests';}
+  else{perfReadRowsBatch_(['Ищу бригаду','Вакансии']);primary=crossSearchRequestsV2_(q,pf);secondary=crossSearchVacanciesV2_(q,pf);secondaryType='vacancies';}
   var out={primary:primary,secondary:secondary,secondaryType:secondaryType};try{CacheService.getScriptCache().put(key,JSON.stringify(out),120);}catch(e2){}return out;
 }
 

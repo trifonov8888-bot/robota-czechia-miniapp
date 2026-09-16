@@ -1,6 +1,9 @@
 name: Restore V46 refactor workflow
 
 on:
+  push:
+    paths:
+      - '.github/workflows/restore-v46-workflow.yml'
   workflow_dispatch:
 
 permissions:

@@ -7,7 +7,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
   contents: write
 
 jobs:
@@ -19,18 +18,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Restore production backend source only
+      - name: Restore backend and trigger direct deploy
         shell: bash
         run: |
           set -e
           git checkout bfd83d6580e978b95eb5ccbf82d748e405294b69 -- apps-script/Kod.js
+          printf 'V46 direct trigger %s\n' "$(date -u +%FT%TZ)" > .github/v46-direct
           git config user.name 'trifonov8888-bot'
           git config user.email 'trifonov88.88@gmail.com'
-          git add apps-script/Kod.js
-          git diff --cached --quiet || git commit -m 'fix: restore backend source before V46'
+          git add apps-script/Kod.js .github/v46-direct
+          git diff --cached --quiet || git commit -m 'fix: restore backend and trigger V46 deploy'
           git push origin HEAD:main
-
-      - name: Dispatch direct V46 deployment
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy-v46-direct.yml --ref main

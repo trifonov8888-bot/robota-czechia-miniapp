@@ -37,9 +37,25 @@ jobs:
           end=text.index('      - name: Validate source',rs)
           lines=text[rs:end].splitlines()
           script='\n'.join((x[10:] if x.startswith('          ') else x) for x in lines).strip('\n')+'\n'
+          # One historical builder assertion is too strict for the current V44 baseline.
+          script=script.replace("if old not in code: raise SystemExit('cross prewarm source pattern not found')\ncode = code.replace(old, new, 1)", "if old in code: code = code.replace(old, new, 1)")
           Path('/tmp/apply-v46.sh').write_text(script,encoding='utf-8')
           PY
           bash /tmp/apply-v46.sh
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          p=Path('apps-script/Kod.js'); s=p.read_text(encoding='utf-8')
+          pat=r"var primary=\[\],secondary=\[\],secondaryType='',pf=Object\.assign\(\{},f,\{query:q\}\);.*?else\{primary=crossSearchRequestsV2_\(q,pf\);secondary=crossSearchVacanciesV2_\(q,pf\);secondaryType='vacancies';\}"
+          rep="""var primary=[],secondary=[],secondaryType='',pf=Object.assign({},f,{query:q});
+  if(mode==='candidates'){perfReadRowsBatch_(['Объявления соискателей','Бригады']);primary=crossSearchCandidatesV2_(q,pf);secondary=crossSearchBrigadesV2_(q,pf);secondaryType='brigades';}
+  else if(mode==='brigades'){perfReadRowsBatch_(['Бригады','Объявления соискателей']);primary=crossSearchBrigadesV2_(q,pf);secondary=crossSearchCandidatesV2_(q,pf);secondaryType='candidates';}
+  else if(mode==='vacancies'){perfReadRowsBatch_(['Вакансии','Ищу бригаду']);primary=crossSearchVacanciesV2_(q,pf);secondary=crossSearchRequestsV2_(q,pf);secondaryType='brigadeRequests';}
+  else{perfReadRowsBatch_(['Ищу бригаду','Вакансии']);primary=crossSearchRequestsV2_(q,pf);secondary=crossSearchVacanciesV2_(q,pf);secondaryType='vacancies';}"""
+          ns,n=re.subn(pat,rep,s,count=1,flags=re.S)
+          if n!=1: raise SystemExit('cross-search V46 patch failed')
+          p.write_text(ns,encoding='utf-8')
+          PY
 
       - name: Validate V46 source
         shell: bash

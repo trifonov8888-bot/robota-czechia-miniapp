@@ -661,10 +661,18 @@ function openSearchCandidate(id){
 function openSearchVacancy(id){window.lastDetailContext=document.body.classList.contains('similar-search-only')?'similarSearch':'search';var aid=decodeURIComponent(id),cached=window.searchResultCache&&window.searchResultCache.vacancies&&window.searchResultCache.vacancies[String(aid)];document.getElementById('searchPanel').classList.add('hidden');document.getElementById('detailPanel').classList.remove('hidden');enterDetailView_();var box=document.getElementById('detailContent');if(!cached){box.innerHTML='<p class="error">❌ Вакансия не найдена в результатах поиска.</p>';return;}box.innerHTML=detailHtml('vacancy',cached)+favoriteButtonHtml_('vacancy',aid,isFavorite_('vacancy',aid));}
 
 function favoritesLocalKey_(){return 'robota_czechia_favorites_'+String(clientUser().id||'');}
-function loadFavoritesLocal_(){return [];}
-function saveFavoritesLocal_(items){/* Favorites are server-authoritative. */}
-function favoriteItemsFromLocal_(){return [];}
-function setFavoriteLocal_(type,id,enabled,data){return [];}
+// Favorites are server-authoritative. Keep only the last confirmed response in memory
+// so a failed/slow refresh can never replace a valid list with zeros.
+window.favoriteItemsCache = window.favoriteItemsCache || null;
+function loadFavoritesLocal_(){return Array.isArray(window.favoriteItemsCache)?window.favoriteItemsCache:[];}
+function saveFavoritesLocal_(items){window.favoriteItemsCache=Array.isArray(items)?items:[];}
+function favoriteItemsFromLocal_(){return Array.isArray(window.favoriteItemsCache)?window.favoriteItemsCache:[];}
+function setFavoriteLocal_(type,id,enabled,data){
+  var items=favoriteItemsFromLocal_().slice(),idx=items.findIndex(function(x){return x.type===type&&String(x.id)===String(id);});
+  if(enabled){var item={type:type,id:String(id),data:data||favoriteDataFor_(type,id)||null};if(idx>=0)items[idx]=Object.assign({},items[idx],item);else items.unshift(item);}
+  else if(idx>=0)items.splice(idx,1);
+  saveFavoritesLocal_(items);return items;
+}
 function favoriteDataUsable_(type,d){if(!d||typeof d!=='object'||d._preview)return false;if(type==='candidate')return !!(d.title||d.profession||d.city);if(type==='vacancy')return !!(d.title||d.profession||d.city);if(type==='brigade')return !!(d.name||d.specialization||d.city);return !!(d.profession||d.city);}
 function favoriteButtonHtml_(type,id,saved){var fn="toggleFavoriteUI('"+type+"','"+encodeURIComponent(id)+"')";return '<button type="button" class="result-btn secondary favorite-btn" data-favorite-type="'+esc(type)+'" data-favorite-id="'+esc(id)+'" onclick="'+fn+'">'+(saved?'♥ Сохранено':'♡ Сохранить')+'</button>';}
 function favoriteKey_(type,id){return String(type||'')+':'+String(id||'');}
@@ -674,17 +682,39 @@ async function toggleFavoriteUI(type,id){
   id=decodeURIComponent(id||'');var saved=isFavorite_(type,id),buttons=[...document.querySelectorAll('.favorite-btn')].filter(function(b){return b.dataset.favoriteType===type&&b.dataset.favoriteId===id;});
   if(buttons.some(function(b){return b.dataset.busy==='1';}))return;
   var next=!saved;buttons.forEach(function(b){b.dataset.busy='1';b.disabled=true;});
-  try{var r=await apiPost({action:'toggleFavorite',entityType:type,entityId:id,userId:clientUser().id,enabled:next},15000,'general');if(!r||!r.ok)throw new Error(r?.error||'Сервер не подтвердил изменение');await loadFavorites_();buttons.forEach(function(b){b.dataset.busy='0';b.disabled=false;b.textContent=isFavorite_(type,id)?'♥ Сохранено':'♡ Сохранить';});showSavedNotice_(r.enabled?'♥ Сохранено':'♡ Удалено из сохранённых');}
-  catch(e){buttons.forEach(function(b){b.dataset.busy='0';b.disabled=false;});showSavedNotice_('❌ '+(e.message||'Не удалось изменить избранное'));}
+  try{
+    var r=await apiPost({action:'toggleFavorite',entityType:type,entityId:id,userId:clientUser().id,enabled:next},15000,'general');
+    if(!r||!r.ok)throw new Error(r?.error||'Сервер не подтвердил изменение');
+    // The server has confirmed the mutation. Update the last confirmed list directly;
+    // do not issue a second slow getMyFavorites request.
+    var items=setFavoriteLocal_(type,id,!!r.enabled,r.data||favoriteDataFor_(type,id));
+    window.favoriteMap={};items.forEach(function(x){window.favoriteMap[favoriteKey_(x.type,x.id)]=true;});
+    var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(items);
+    buttons.forEach(function(b){b.dataset.busy='0';b.disabled=false;b.textContent=isFavorite_(type,id)?'♥ Сохранено':'♡ Сохранить';});
+    showSavedNotice_(r.enabled?'♥ Сохранено':'♥ Удалено из сохранённых');
+  }catch(e){buttons.forEach(function(b){b.dataset.busy='0';b.disabled=false;});showSavedNotice_('❌ '+(e.message||'Не удалось изменить избранное'));}
 }
 function showSavedNotice_(text){var old=document.getElementById('savedToast');if(old)old.remove();var d=document.createElement('div');d.id='savedToast';d.textContent=text;d.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;background:#202735;border:1px solid #343d4c;border-radius:12px;padding:10px 14px;font-weight:800;box-shadow:0 6px 24px rgba(0,0,0,.3)';document.body.appendChild(d);setTimeout(function(){d.remove();},1400);}
 async function loadFavorites_(){
-  try{var r=await apiPost({action:'getMyFavorites',userId:clientUser().id},10000,'general');if(r&&r.ok){var items=(r.items||[]).map(function(x){return{type:x.type,id:String(x.announcement_id||x.vacancy_id||x.brigade_id||x.brigade_request_id||''),data:x.data||null};}).filter(function(x){return x.id;});window.favoriteMap={};items.forEach(function(x){window.favoriteMap[favoriteKey_(x.type,x.id)]=true;});document.querySelectorAll('.favorite-btn').forEach(function(b){var k=favoriteKey_(b.dataset.favoriteType,b.dataset.favoriteId);b.textContent=window.favoriteMap[k]?'♥ Сохранено':'♡ Сохранить';});var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(items);return items;}}catch(e){}window.favoriteMap={};var sec2=document.getElementById('savedSection');if(sec2)sec2.innerHTML=renderFavorites_([]);return [];
+  var previous=favoriteItemsFromLocal_();
+  try{
+    var r=await apiPost({action:'getMyFavorites',userId:clientUser().id},15000,'general');
+    if(r&&r.ok){
+      var items=(r.items||[]).map(function(x){return{type:x.type,id:String(x.announcement_id||x.vacancy_id||x.brigade_id||x.brigade_request_id||''),data:x.data||null};}).filter(function(x){return x.id;});
+      saveFavoritesLocal_(items);window.favoriteMap={};items.forEach(function(x){window.favoriteMap[favoriteKey_(x.type,x.id)]=true;});
+      document.querySelectorAll('.favorite-btn').forEach(function(b){var k=favoriteKey_(b.dataset.favoriteType,b.dataset.favoriteId);b.textContent=window.favoriteMap[k]?'♥ Сохранено':'♡ Сохранить';});
+      var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(items);return items;
+    }
+  }catch(e){console.warn('getMyFavorites failed',e);}
+  // Never destroy a previously confirmed list because of a timeout/error.
+  window.favoriteMap={};previous.forEach(function(x){window.favoriteMap[favoriteKey_(x.type,x.id)]=true;});
+  var sec2=document.getElementById('savedSection');if(sec2)sec2.innerHTML=renderFavorites_(previous);
+  return previous;
 }
 function favoriteFolderTitle_(type){return{candidate:'👤 Сохранённые работники',vacancy:'💼 Сохранённые вакансии',brigade:'👷 Сохранённые бригады',request:'🤝 Сохранённые запросы'}[type]||'Сохранённое';}
 function favoriteFolderIcon_(type){return{candidate:'👤',vacancy:'💼',brigade:'👷',request:'🤝'}[type]||'⭐';}
-async function favoriteFolderOpen_(type){window.favoriteFolderOpen=type;await loadFavorites_();}
-function favoriteFolderClose_(){window.favoriteFolderOpen='';loadFavorites_();}
+async function favoriteFolderOpen_(type){window.favoriteFolderOpen=type;var items=favoriteItemsFromLocal_();if(items.length){var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(items);}await loadFavorites_();}
+function favoriteFolderClose_(){window.favoriteFolderOpen='';var items=favoriteItemsFromLocal_();var sec=document.getElementById('savedSection');if(sec)sec.innerHTML=renderFavorites_(items);loadFavorites_();}
 function renderFavorites_(items){
   items=items||[];var groups={candidate:[],vacancy:[],brigade:[],request:[]};items.forEach(function(x){if(groups[x.type])groups[x.type].push(x);});
   var html='<div class="divider"></div><div class="section-title">⭐ Сохранённое</div><div class="hint" style="margin:-5px 0 10px">Сохранённые объявления распределены по папкам.</div>';var open=window.favoriteFolderOpen||'';
@@ -692,7 +722,7 @@ function renderFavorites_(items){
   [['candidate','👤','Сохранённые работники'],['vacancy','💼','Сохранённые вакансии'],['brigade','👷','Сохранённые бригады'],['request','🤝','Сохранённые запросы']].forEach(function(g){var arr=groups[g[0]];html+='<button type="button" class="saved-folder" onclick="favoriteFolderOpen_(\''+g[0]+'\')"><span class="saved-folder-icon">'+g[1]+'</span><span class="saved-folder-title">'+g[2]+'</span><span class="saved-folder-count">'+arr.length+'</span><span>›</span></button>';});return html;
 }
 
-async function startSave_(type,id){
+function startSave_(type,id){
   enterDetailView_();
   id=decodeURIComponent(String(id||''));
   var box=document.getElementById('detailContent');
